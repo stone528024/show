@@ -1,2 +1,383 @@
-<!DOCTYPE html><html lang=zh-CN><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><title>智能情趣用品控制app</title><script>var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') || CSS.supports('top: constant(a)'))
-            document.write('<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' + (coverSupport ? ', viewport-fit=cover' : '') + '" />')</script><link rel=stylesheet href=/static/index.2da1efab.css></head><body><noscript><strong>Please enable JavaScript to continue.</strong></noscript><div id=app></div><script src=/static/js/chunk-vendors.8f4e8701.js></script><script src=/static/js/index.c47f2b26.js></script></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Soul Moments & Chat</title>
+    <style>
+        :root {
+            --white: #ffffff;
+            --glass: rgba(0, 0, 0, 0.4);
+            --accent: #ff8c69;
+            --chat-bg: #121212;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%; background: #000;
+            font-family: -apple-system, "Noto Sans SC", "PingFang SC", sans-serif;
+            overflow: hidden;
+        }
+
+        /* 触发器：模拟收到新瞬间 */
+        .notification-trigger {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95); padding: 14px 20px;
+            border-radius: 20px; display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); z-index: 50;
+            cursor: pointer; border: none; width: 300px;
+        }
+
+        .notif-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }
+        .notif-body { flex: 1; text-align: left; }
+        .notif-body b { display: block; font-size: 15px; color: #000; margin-bottom: 2px; }
+        .notif-body p { margin: 0; font-size: 13px; color: #666; }
+
+        /* Story 全屏层 */
+        .overlay {
+            position: fixed; inset: 0; background: #000;
+            opacity: 0; visibility: hidden; z-index: 100;
+            transition: opacity 0.5s ease;
+        }
+        .overlay.active { opacity: 1; visibility: visible; }
+
+        /* 滑动轨道 */
+        .story-track {
+            display: flex; width: 300%; height: 100%;
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .story-page {
+            width: 33.3333%; height: 100%; position: relative;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .story-bg {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; filter: brightness(0.8) contrast(1.1);
+            transition: 10s transform linear;
+        }
+        .active .story-bg { transform: scale(1.15); }
+
+        .story-ui {
+            position: absolute; inset: 0; z-index: 10;
+            display: flex; flex-direction: column;
+            pointer-events: none;
+        }
+        .story-ui > * { pointer-events: auto; }
+
+        .story-header {
+            padding: 60px 20px 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+            display: flex; align-items: center; gap: 12px;
+        }
+        .header-avatar { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #fff; }
+        .header-info h3 { color: #fff; margin: 0; font-size: 16px; font-weight: 600; }
+        .header-info p { color: rgba(255,255,255,0.7); margin: 3px 0 0; font-size: 11px; letter-spacing: 1px; }
+
+        .message-area {
+            flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+            padding: 0 20px 140px;
+        }
+
+        .typing-box {
+            font-size: 12px; color: rgba(255,255,255,0.8);
+            margin-bottom: 10px; margin-left: 4px; opacity: 0;
+            transition: 0.3s; display: flex; align-items: center; gap: 5px;
+        }
+        .dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; animation: bounce 1.4s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+        .chat-bubble {
+            background: var(--glass); backdrop-filter: blur(15px);
+            padding: 16px 20px; border-radius: 22px 22px 22px 4px;
+            color: #fff; font-size: 16px; max-width: 85%;
+            margin-bottom: 15px; opacity: 0; transform: translateY(15px);
+            transition: 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            line-height: 1.6; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .chat-bubble.show { opacity: 1; transform: translateY(0); }
+
+        /* 修改后的底部按钮 */
+        .story-footer {
+            padding: 20px; display: flex; justify-content: center;
+            background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+        }
+        .chat-entry-btn {
+            width: 100%; height: 56px; border-radius: 28px;
+            background: #fff; color: #000; border: none;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2); transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .chat-entry-btn:active { transform: scale(0.96); }
+
+        .close-btn {
+            position: absolute; top: 62px; right: 20px; color: #fff;
+            font-size: 20px; opacity: 0.8; z-index: 110; padding: 10px;
+        }
+
+        /* ---------------- 对话详情页面 ---------------- */
+        .chat-overlay {
+            position: fixed; inset: 0; background: var(--chat-bg);
+            z-index: 200; transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 1, 0.23, 1);
+            display: flex; flex-direction: column;
+        }
+        .chat-overlay.active { transform: translateY(0); }
+
+        .chat-header {
+            padding: 50px 20px 15px; background: rgba(20,20,20,0.8);
+            backdrop-filter: blur(20px); display: flex; align-items: center; gap: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .back-btn { color: #fff; font-size: 28px; cursor: pointer; padding: 0 10px; }
+        .chat-partner-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+        .chat-partner-avatar { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
+        .chat-partner-name { color: #fff; font-size: 16px; font-weight: 600; }
+
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 15px;
+            background: radial-gradient(circle at top right, #1a1a1a, #121212);
+        }
+        .msg { max-width: 80%; padding: 12px 18px; border-radius: 20px; font-size: 15px; line-height: 1.5; }
+        .msg.partner { background: #262626; color: #fff; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg.user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        .chat-input-area {
+            padding: 15px 20px calc(25px + env(safe-area-inset-bottom));
+            background: #1a1a1a; display: flex; gap: 12px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .real-input {
+            flex: 1; height: 48px; border-radius: 24px; background: #2b2b2b;
+            border: 1px solid rgba(255,255,255,0.1); padding: 0 18px; color: #fff; font-size: 15px; outline: none;
+        }
+        .send-btn {
+            width: 48px; height: 48px; background: var(--accent); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; border: none;
+            cursor: pointer; transition: 0.2s;
+        }
+        .send-btn:active { transform: scale(0.9); }
+
+        /* 顶部进度条 */
+        .progress-container {
+            position: absolute; top: 50px; left: 10px; right: 10px;
+            display: flex; gap: 5px; z-index: 105;
+        }
+        .progress-bar { flex: 1; height: 2px; background: rgba(255,255,255,0.2); border-radius: 1px; overflow: hidden; }
+        .progress-inner { height: 100%; background: #fff; width: 0; transition: width 0.3s; }
+        .progress-bar.active .progress-inner { width: 100%; }
+
+    </style>
+</head>
+
+<body>
+
+    <button class="notification-trigger" onclick="openStory()">
+        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" class="notif-avatar" id="notif-img">
+        <div class="notif-body">
+            <b id="notif-name">迦南 Canaan</b>
+            <p>更新了一个新瞬间...</p>
+        </div>
+    </button>
+
+    <!-- Story 瞬间层 -->
+    <div class="overlay" id="overlay">
+        <div class="close-btn" onclick="closeStory()">✕</div>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="p0"><div class="progress-inner"></div></div>
+            <div class="progress-bar" id="p1"><div class="progress-inner"></div></div>
+            <div class="progress-bar" id="p2"><div class="progress-inner"></div></div>
+        </div>
+
+        <div class="story-track" id="track">
+            <!-- 伙伴 1 -->
+            <div class="story-page" id="page-0">
+                <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1000&q=80" class="story-bg">
+                <div class="story-ui">
+                    <div class="story-header">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" class="header-avatar">
+                        <div class="header-info"><h3>迦南 Canaan</h3><p>📍 阳光散落的咖啡馆</p></div>
+                    </div>
+                    <div class="message-area">
+                        <div class="typing-box">对方正在输入<div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="chat-bubble">好久不见。刚在路边看到一束很好看的郁金香，突然想跟你分享。</div>
+                    </div>
+                    <div class="story-footer">
+                        <button class="chat-entry-btn" onclick="openChat(0)">私聊她</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 伙伴 2 -->
+            <div class="story-page" id="page-1">
+                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1000&q=80" class="story-bg">
+                <div class="story-ui">
+                    <div class="story-header">
+                        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&q=80" class="header-avatar">
+                        <div class="header-info"><h3>秋 Aki</h3><p>📍 霓虹闪烁的街头</p></div>
+                    </div>
+                    <div class="message-area">
+                        <div class="typing-box">Aki 正在打字<div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="chat-bubble">嘿！刚蹦完迪出来，这城市的夜景绝了！你要是在这儿就好了。</div>
+                    </div>
+                    <div class="story-footer">
+                        <button class="chat-entry-btn" onclick="openChat(1)">私聊 Aki</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 伙伴 3 -->
+            <div class="story-page" id="page-2">
+                <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1000&q=80" class="story-bg">
+                <div class="story-ui">
+                    <div class="story-header">
+                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80" class="header-avatar">
+                        <div class="header-info"><h3>里安 Liam</h3><p>📍 亮着一盏灯的画室</p>
+                        </div>
+                    </div>
+                    <div class="message-area">
+                        <div class="typing-box">Liam 正在思考<div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="chat-bubble">这幅画快收尾了，但总觉得少了点什么。也许是少了一个可以分享它的人。</div>
+                    </div>
+                    <div class="story-footer">
+                        <button class="chat-entry-btn" onclick="openChat(2)">私聊 Liam</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详细对话层 -->
+    <div class="chat-overlay" id="chat-overlay">
+        <div class="chat-header">
+            <span class="back-btn" onclick="closeChat()">‹</span>
+            <div class="chat-partner-info">
+                <img src="" id="chat-partner-avatar" class="chat-partner-avatar">
+                <span id="chat-partner-name" class="chat-partner-name"></span>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- 消息动态插入 -->
+        </div>
+        <div class="chat-input-area">
+            <input type="text" class="real-input" id="user-input" placeholder="发消息...">
+            <button class="send-btn" onclick="sendMessage()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentIndex = 0;
+        const track = document.getElementById('track');
+        const overlay = document.getElementById('overlay');
+        const chatOverlay = document.getElementById('chat-overlay');
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        let startX = 0;
+
+        const partners = [
+            { name: "迦南 Canaan", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80", replies: ["嗯，我也在想你呢。", "比起咖啡，我现在更想听听你的声音。", "别急着走，再多跟我聊两句吧。"] },
+            { name: "秋 Aki", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&q=80", replies: ["哈哈，带你飞啊！", "这城市的夜还没结束呢。", "下次一定要叫上你，不许放鸽子！"] },
+            { name: "里安 Liam", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80", replies: ["感谢你的共鸣。", "色彩能治愈很多东西，你也这么觉得吗？", "这幅画里其实藏着一个只有你能看懂的秘密。"] }
+        ];
+
+        function openStory() {
+            overlay.classList.add('active');
+            updateUI(0);
+        }
+
+        function closeStory() {
+            overlay.classList.remove('active');
+            resetAll();
+        }
+
+        function updateUI(index) {
+            document.querySelectorAll('.progress-bar').forEach((p, i) => {
+                p.classList.toggle('active', i <= index);
+            });
+            resetAll();
+            const page = document.getElementById(`page-${index}`);
+            const typing = page.querySelector('.typing-box');
+            const bubble = page.querySelector('.chat-bubble');
+            setTimeout(() => {
+                typing.style.opacity = 1;
+                setTimeout(() => {
+                    typing.style.opacity = 0;
+                    bubble.classList.add('show');
+                }, 1600);
+            }, 600);
+        }
+
+        function resetAll() {
+            document.querySelectorAll('.chat-bubble').forEach(b => b.classList.remove('show'));
+            document.querySelectorAll('.typing-box').forEach(t => t.style.opacity = 0);
+        }
+
+        overlay.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+        overlay.addEventListener('touchend', e => {
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+            if (Math.abs(diff) > 60) {
+                if (diff > 0 && currentIndex < 2) currentIndex++;
+                else if (diff < 0 && currentIndex > 0) currentIndex--;
+                track.style.transform = `translateX(-${currentIndex * 33.3333}%)`;
+                updateUI(currentIndex);
+            }
+        });
+
+        // 聊天页面逻辑
+        function openChat(index) {
+            currentIndex = index;
+            document.getElementById('chat-partner-name').innerText = partners[index].name;
+            document.getElementById('chat-partner-avatar').src = partners[index].img;
+            chatMessages.innerHTML = `<div class="msg partner">你好啊，很高兴你能主动找我。</div>`;
+            chatOverlay.classList.add('active');
+        }
+
+        function closeChat() { chatOverlay.classList.remove('active'); }
+
+        function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            appendMessage('user', text);
+            userInput.value = "";
+            
+            // 模拟回复延迟
+            setTimeout(() => {
+                const partnerReplies = partners[currentIndex].replies;
+                const reply = partnerReplies[Math.floor(Math.random() * partnerReplies.length)];
+                appendMessage('partner', reply);
+                if (navigator.vibrate) navigator.vibrate(25);
+            }, 1000 + Math.random() * 1500);
+        }
+
+        function appendMessage(role, text) {
+            const m = document.createElement('div');
+            m.className = `msg ${role}`;
+            m.innerText = text;
+            chatMessages.appendChild(m);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+
+        setInterval(() => {
+            if (!overlay.classList.contains('active')) {
+                const rand = Math.floor(Math.random() * partners.length);
+                document.getElementById('notif-img').src = partners[rand].img;
+                document.getElementById('notif-name').innerText = partners[rand].name;
+            }
+        }, 5000);
+    </script>
+</body>
+
+</html>
