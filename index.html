@@ -376,8 +376,8 @@
         }
 
         .data-row {
-            display: flex;
-            justify-content: space-between;
+            /* display: flex;
+            justify-content: space-between; */
         }
 
         .data-item {
@@ -654,13 +654,13 @@
                     <div class="report-section">
                         <div class="section-title">设备参数</div>
                         <div class="tech-grid">
-                            <div class="tech-cell"><span class="label">拍摄设备</span><span class="value"
-                                    id="metaDevice"></span></div>
-                            <div class="tech-cell"><span class="label">分辨率</span><span class="value"
+                            <!-- <div class="tech-cell"><span class="label">拍摄设备：</span><span class="value"
+                                    id="metaDevice"></span></div> -->
+                            <div class="tech-cell"><span class="label">分辨率：</span><span class="value"
                                     id="metaRes"></span></div>
-                            <div class="tech-cell"><span class="label">感光度</span><span class="value"
+                            <div class="tech-cell"><span class="label">感光度：</span><span class="value"
                                     id="metaIso"></span></div>
-                            <div class="tech-cell"><span class="label">光圈</span><span class="value"
+                            <div class="tech-cell"><span class="label">光圈：</span><span class="value"
                                     id="metaAperture"></span></div>
                         </div>
                     </div>
@@ -695,12 +695,14 @@
 
     <!-- 去掉 capture="environment" 以直接调用相册 -->
     <input type="file" id="fileInput" accept="image/*">
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         const state = {
             status: 'idle', rawContent: '', metadata: {}, stream: null, scanning: false
         };
         const statusMap = { idle: '待命', loading: '核验中', success: '已认证', external: '非受信' };
+
+        const zxingReader = new ZXing.BrowserQRCodeReader();
 
         function showToast(msg) {
             const toast = document.createElement('div');
@@ -714,30 +716,26 @@
                 showToast('实时扫码需 HTTPS 环境，请使用“从相册选择”'); return;
             }
             try {
-                state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 const video = document.getElementById('videoPreview');
-                video.srcObject = state.stream; video.setAttribute("playsinline", true); video.play();
                 document.getElementById('scannerView').style.display = 'flex'; state.scanning = true;
-                requestAnimationFrame(tick);
-            } catch (err) { showToast('无法访问摄像头，请检查权限'); }
+
+                // 使用 ZXing 进行实时扫码
+                zxingReader.decodeFromVideoDevice(null, video, (result, err) => {
+                    if (result) {
+                        stopScanner();
+                        processResult(result.getText());
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+                showToast('无法访问摄像头，请检查权限');
+            }
         }
 
         function stopScanner() {
-            if (state.stream) { state.stream.getTracks().forEach(track => track.stop()); state.stream = null; }
-            state.scanning = false; document.getElementById('scannerView').style.display = 'none';
-        }
-
-        function tick() {
-            if (!state.scanning) return;
-            const video = document.getElementById('videoPreview');
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-                canvas.height = video.videoHeight; canvas.width = video.videoWidth;
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height, { inversionAttempts: "dontInvert" });
-                if (code) { stopScanner(); processResult(code.data); return; }
-            }
-            requestAnimationFrame(tick);
+            zxingReader.reset();
+            state.scanning = false;
+            document.getElementById('scannerView').style.display = 'none';
         }
 
         function updateUI() {
@@ -757,7 +755,7 @@
                 document.getElementById('metaTime').innerText = state.metadata.verifyTime || '-';
                 document.getElementById('metaAddress').innerText = state.metadata.location?.address || '-';
                 document.getElementById('metaCoords').innerText = state.metadata.location?.coords || '-';
-                document.getElementById('metaDevice').innerText = state.metadata.device?.model || '-';
+                // document.getElementById('metaDevice').innerText = state.metadata.device?.model || '-';
                 document.getElementById('metaRes').innerText = state.metadata.device?.resolution || '-';
                 document.getElementById('metaIso').innerText = 'ISO ' + (state.metadata.device?.iso || '-');
                 document.getElementById('metaAperture').innerText = 'f/' + (state.metadata.device?.aperture || '-');
@@ -774,106 +772,59 @@
             }
         });
 
-        // 检测是否支持原生 BarcodeDetector API (现代浏览器/移动端支持较好)
-        const hasNativeDetector = 'BarcodeDetector' in window;
-
         async function scanImage(source) {
             state.status = 'loading'; updateUI();
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.src = source;
             try {
-                await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
-                
-                let detectedData = null;
-
-                // 1. 优先使用浏览器原生 BarcodeDetector (性能和识别率极高)
-                if (hasNativeDetector) {
-                    try {
-                        const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
-                        const barcodes = await barcodeDetector.detect(img);
-                        if (barcodes.length > 0) {
-                            detectedData = barcodes[0].rawValue;
-                        }
-                    } catch (e) {
-                        console.warn('原生 BarcodeDetector 运行出错:', e);
-                    }
+                // 使用 ZXing 识别上传的图片
+                const result = await zxingReader.decodeFromImageUrl(source);
+                if (result) {
+                    processResult(result.getText());
                 }
+            } catch (err) {
+                console.warn('ZXing 常规识别失败，尝试分块扫描...', err);
 
-                // 2. 如果原生不支持或识别失败，使用 jsQR 的切片模式作为后备
-                if (!detectedData) {
-                    const scales = [0, 2000, 1600, 1200, 800];
-                    for (let dim of scales) {
-                        const result = scanAtScale(img, dim);
-                        if (result) {
-                            detectedData = result.data;
-                            break;
-                        }
-                    }
-                }
+                // 如果常规扫描失败，尝试对图片进行切片处理（针对二维码极小的情况）
+                const img = new Image();
+                img.src = source;
+                await new Promise(r => img.onload = r);
 
-                // 3. 最后的挣扎：切片扫描
-                if (!detectedData) {
-                    const result = scanInTiles(img);
-                    if (result) detectedData = result.data;
-                }
-
-                if (detectedData) {
-                    processResult(detectedData);
+                const detectedText = await scanInTiles(img);
+                if (detectedText) {
+                    processResult(detectedText);
                 } else {
-                    state.status = 'idle'; 
-                    updateUI(); 
+                    state.status = 'idle';
+                    updateUI();
                     showToast('未检测到二维码，建议截图后放大二维码再次尝试');
                 }
-            } catch (e) { 
-                console.error('图片处理失败:', e);
-                state.status = 'idle'; 
-                updateUI(); 
-                showToast('图片处理出错，请重试'); 
             }
         }
 
         /**
-         * 在指定尺度下扫描
+         * 切片扫描：针对极其微小的二维码
          */
-        function scanAtScale(img, dim) {
+        async function scanInTiles(img) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            let w = img.width, h = img.height;
-            if (dim > 0 && (w > dim || h > dim)) {
-                if (w > h) { h = (h / w) * dim; w = dim; } 
-                else { w = (w / h) * dim; h = dim; }
-            }
-            canvas.width = w; canvas.height = h;
-            ctx.drawImage(img, 0, 0, w, h);
-            const imageData = ctx.getImageData(0, 0, w, h);
-            return jsQR(imageData.data, w, h, { inversionAttempts: "attemptBoth" });
-        }
-
-        /**
-         * 切片扫描：将图片分成 3x3 的重叠区域进行扫描 (模拟局部放大)
-         */
-        function scanInTiles(img) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            const size = 800; // 每个切片的目标大小
+            const size = 1000;
             canvas.width = size;
             canvas.height = size;
 
-            // 定义 3x3 的切片位置 (包含重叠)
-            const steps = [0, 0.25, 0.5, 0.75];
+            const steps = [0, 0.2, 0.4, 0.6, 0.8];
             for (let y of steps) {
                 for (let x of steps) {
-                    const sw = img.width * 0.4; // 每次取原图 40% 的区域
-                    const sh = img.height * 0.4;
+                    const sw = img.width * 0.3;
+                    const sh = img.height * 0.3;
                     const sx = (img.width - sw) * x;
                     const sy = (img.height - sh) * y;
 
                     ctx.clearRect(0, 0, size, size);
                     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
-                    const imageData = ctx.getImageData(0, 0, size, size);
-                    const code = jsQR(imageData.data, size, size, { inversionAttempts: "attemptBoth" });
-                    if (code) return code;
+
+                    try {
+                        const tileSource = canvas.toDataURL('image/jpeg', 0.9);
+                        const result = await zxingReader.decodeFromImageUrl(tileSource);
+                        if (result) return result.getText();
+                    } catch (e) { }
                 }
             }
             return null;
@@ -883,40 +834,23 @@
             state.status = 'loading';
             state.rawContent = result;
             updateUI();
-
-            // 拿到纯文本结果后，直接请求后端获取详细数据
             await fetchVerificationData(result);
         }
 
-        /**
-         * 请求后端接口获取验证数据
-         */
         async function fetchVerificationData(text) {
             const API_BASE = 'http://192.168.0.143:8080/api/archive/verifyResource/';
             try {
-                // 将解析出来的纯文本直接拼接在路径后面
                 const response = await fetch(`${API_BASE}${text}`);
                 if (!response.ok) throw new Error('网络请求失败');
-
                 const resData = await response.json();
-
-                // 根据返回的 JSON 结构映射到 UI 状态
-                // 只要请求成功且有数据，就认为核验通过
-                if (resData && resData.id !== undefined) {
+                let { data } = resData
+                if (data && data.id !== undefined) {
                     state.status = 'success';
                     state.metadata = {
-                        id: resData.photoSecurityCode || resData.id,
-                        verifyTime: resData.createTime ? new Date(resData.createTime).toLocaleString() : new Date().toLocaleString(),
-                        location: {
-                            address: resData.address || '未知地点',
-                            coords: resData.latlgn || '0,0'
-                        },
-                        device: {
-                            model: resData.cameraModel || '未知设备',
-                            resolution: resData.resolution || 'N/A',
-                            iso: '-',
-                            aperture: '-'
-                        }
+                        id: data.photoSecurityCode || data.id,
+                        verifyTime: data.createTime ? new Date(data.createTime).toLocaleString() : new Date().toLocaleString(),
+                        location: { address: data.address || '未知地点', coords: data.latlgn || '0,0' },
+                        device: { model: data.cameraModel || '未知设备', resolution: data.resolution || 'N/A', iso: '-', aperture: '-' }
                     };
                 } else {
                     state.status = 'external';
@@ -937,14 +871,9 @@
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
             const imgUrl = params.get('img') || params.get('url');
-
-            if (code) {
-                processResult(code);
-            } else if (imgUrl) {
-                scanImage(imgUrl);
-            } else {
-                updateUI();
-            }
+            if (code) { processResult(code); }
+            else if (imgUrl) { scanImage(imgUrl); }
+            else { updateUI(); }
         };
     </script>
 </body>
