@@ -792,11 +792,33 @@
             }
             try {
                 const video = document.getElementById('videoPreview');
-                document.getElementById('scannerView').style.display = 'flex'; state.scanning = true;
-                zxingReader.decodeFromVideoDevice(null, video, (result, err) => {
-                    if (result) { stopScanner(); processResult(result.getText()); }
+                document.getElementById('scannerView').style.display = 'flex';
+                state.scanning = true;
+
+                // 核心修复：配置更高清的视频流约束
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // 强制优先使用后置摄像头
+                        width: { ideal: 1280, max: 1920 }, // 优先请求 720p/1080p 高清画面
+                        height: { ideal: 720, max: 1080 }
+                    }
+                };
+
+                // 使用 decodeFromConstraints 替代原来的 decodeFromVideoDevice
+                zxingReader.decodeFromConstraints(constraints, video, (result, err) => {
+                    if (result) {
+                        // 扫码成功
+                        stopScanner();
+                        processResult(result.getText());
+                    }
+                    // 注意：这里的 err 不需要处理，因为视频流每秒有几十帧，
+                    // 只要有一帧没扫到二维码，ZXing 就会抛出一个 NotFoundError，这是正常的。
                 });
-            } catch (err) { showToast('无法访问摄像头，请检查权限'); }
+            } catch (err) {
+                console.error("启动相机失败:", err);
+                document.getElementById('scannerView').style.display = 'none';
+                showToast('无法访问高清摄像头，请检查权限');
+            }
         }
 
         function stopScanner() {
