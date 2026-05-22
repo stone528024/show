@@ -4,58 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极速二维码识别</title>
-    <!-- 引入 jsQR 用于处理图片右上角截取 (因为这个特定需求 jsQR 更好用) -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <!-- 引入 html5-qrcode 用于实时摄像头极速扫描 -->
+    <title>终极原图二维码识别</title>
+    <!-- 引入强大的企业级识别引擎 html5-qrcode -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
-            padding: 15px;
-            background: #f5f5f5;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
 
         .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 12px 20px;
-            color: white;
-            cursor: pointer;
-            border-radius: 6px;
-            border: none;
-            font-size: 16px;
-            flex: 1;
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             text-align: center;
         }
 
         .upload-btn {
-            background-color: #007bff;
-        }
-
-        .scan-btn {
-            background-color: #28a745;
-        }
-
-        .stop-btn {
-            background-color: #dc3545;
-            margin-top: 10px;
+            display: block;
             width: 100%;
-            display: none;
+            box-sizing: border-box;
+            padding: 15px 20px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn:hover {
+            background-color: #0056b3;
         }
 
         #fileInput {
@@ -63,19 +47,22 @@
         }
 
         #result-box {
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            background: #f8f9fa;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
             word-wrap: break-word;
-            min-height: 50px;
+            min-height: 80px;
+            margin-bottom: 20px;
+            text-align: left;
             font-size: 16px;
-            margin-bottom: 15px;
+            line-height: 1.5;
         }
 
         .success {
             color: #28a745;
             font-weight: bold;
+            font-size: 18px;
         }
 
         .error {
@@ -88,26 +75,14 @@
             font-weight: bold;
         }
 
-        /* 预览和摄像头容器 */
-        #preview-canvas {
-            display: none;
+        /* 图片预览区 */
+        #preview-img {
             max-width: 100%;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-
-        /* html5-qrcode 会将视频注入到这个 div 中 */
-        #reader {
-            width: 100%;
-            display: none;
+            height: auto;
             border-radius: 8px;
-            overflow: hidden;
-        }
-
-        /* 隐藏 html5-qrcode 库自带的丑陋文字 */
-        #reader__dashboard_section_csr span {
-            color: transparent !important;
+            display: none;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -115,155 +90,79 @@
 <body>
 
     <div class="container">
-        <h2>⚡ 终极网页扫码器</h2>
+        <h2 style="margin-top:0;">📸 高精度图片识别</h2>
+        <p style="font-size: 13px; color: #666; text-align: left;">
+            系统将直接分析原始高清图像（无论二维码在右上角还是哪个位置都能精准捕获）。
+        </p>
 
-        <div id="result-box">等待操作...</div>
+        <!-- 选择文件按钮 -->
+        <label class="upload-btn" for="fileInput">📷 拍照 / 从相册选择</label>
+        <input type="file" id="fileInput" accept="image/*">
 
-        <div class="btn-group">
-            <label class="btn upload-btn" for="fileInput">📁 上传图片(右上角)</label>
-            <input type="file" id="fileInput" accept="image/*">
-            <button class="btn scan-btn" id="startScanBtn">👁️ 开启扫一扫</button>
+        <div id="result-box">
+            等待上传图片...
         </div>
 
-        <!-- 上传图片的画布 -->
-        <canvas id="preview-canvas"></canvas>
+        <!-- 原生图片预览，避免 Canvas 导致图片模糊 -->
+        <img id="preview-img" alt="预览图">
 
-        <!-- 扫一扫的视频容器 -->
-        <div id="reader"></div>
-        <button class="btn stop-btn" id="stopScanBtn">❌ 关闭摄像头</button>
+        <!-- 引擎需要的隐藏占位符 -->
+        <div id="reader-placeholder" style="display: none;"></div>
     </div>
 
     <script>
-        // --- DOM 元素 ---
         const fileInput = document.getElementById('fileInput');
-        const previewCanvas = document.getElementById('preview-canvas');
-        const ctx = previewCanvas.getContext('2d');
         const resultBox = document.getElementById('result-box');
-        const startScanBtn = document.getElementById('startScanBtn');
-        const stopScanBtn = document.getElementById('stopScanBtn');
-        const readerDiv = document.getElementById('reader');
+        const previewImg = document.getElementById('preview-img');
 
-        // 声明全局的扫描器实例
-        let html5QrCode = null;
+        // 初始化强大的扫码引擎
+        const html5QrCode = new Html5Qrcode("reader-placeholder");
 
-        // ==========================================
-        // 1. 上传图片识别逻辑 (依然保留右上角截取识别)
-        // ==========================================
         fileInput.addEventListener('change', function (e) {
+            if (e.target.files.length === 0) return;
+
             const file = e.target.files[0];
-            if (!file) return;
 
-            // 如果开着摄像头，先关闭
-            stopCamera();
+            // 1. UI 变化：显示原图预览，提示正在解析
+            previewImg.src = URL.createObjectURL(file);
+            previewImg.style.display = 'block';
+            showMsg('正在使用强力引擎解析原图，请稍候...', 'info');
 
-            showMsg('正在处理图片...', 'info');
-            previewCanvas.style.display = 'block';
-
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const img = new Image();
-                img.onload = function () {
-                    previewCanvas.width = img.width;
-                    previewCanvas.height = img.height;
-                    ctx.drawImage(img, 0, 0, img.width, img.height);
-
-                    // 定义右上角区域
-                    const cropRatio = 0.4;
-                    const cropWidth = Math.floor(img.width * cropRatio);
-                    const cropHeight = Math.floor(img.height * cropRatio);
-                    const startX = img.width - cropWidth;
-                    const startY = 0;
-
-                    ctx.strokeStyle = "red"; ctx.lineWidth = 5;
-                    ctx.strokeRect(startX, startY, cropWidth, cropHeight);
-
-                    const imageData = ctx.getImageData(startX, startY, cropWidth, cropHeight);
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
-
-                    if (code) {
-                        showMsg(`✅ 右上角识别成功！<br><br><strong>内容：</strong><br>${code.data}`, 'success');
-                    } else {
-                        const fullImageData = ctx.getImageData(0, 0, img.width, img.height);
-                        const fullCode = jsQR(fullImageData.data, fullImageData.width, fullImageData.height);
-                        if (fullCode) {
-                            showMsg(`⚠️ 右上角未找，在其他位置找到：<br><br><strong>内容：</strong><br>${fullCode.data}`, 'success');
-                        } else {
-                            showMsg(`❌ 未识别到二维码。`, 'error');
-                        }
-                    }
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // ==========================================
-        // 2. 极速扫一扫逻辑 (使用 Html5Qrcode)
-        // ==========================================
-        startScanBtn.addEventListener('click', () => {
-            previewCanvas.style.display = 'none';
-            readerDiv.style.display = 'block';
-            stopScanBtn.style.display = 'block';
-            showMsg('正在启动摄像头...<br><span style="font-size:12px;color:#666">请将二维码对准屏幕中央的方框中，保持稳定。</span>', 'info');
-
-            // 初始化扫描器
-            html5QrCode = new Html5Qrcode("reader");
-
-            // 配置参数 (这是最关键的优化点)
-            const config = {
-                fps: 10,                 // 每秒只扫描 10 次，留给镜头足够的时间去对焦
-                qrbox: { width: 250, height: 250 }, // ★核心：屏幕上生成一个 250x250 的框，只算框里的画面！
-                aspectRatio: 1.0         // 强制画面比例
-            };
-
-            // 启动后置摄像头
-            html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                // 扫码成功的回调
-                (decodedText, decodedResult) => {
-                    stopCamera();
+            // 2. 核心：直接把 File 对象传给引擎，不经过任何 Canvas 污染！
+            // 第二个参数 false 表示不输出底层日志
+            html5QrCode.scanFile(file, false)
+                .then(decodedText => {
+                    // 识别成功
                     successHandle(decodedText);
-                },
-                // 扫码失败/未找到的回调 (频繁触发，直接忽略即可)
-                (errorMessage) => { }
-            ).catch((err) => {
-                showMsg(`❌ 摄像头启动失败，请检查权限。`, 'error');
-                stopCamera();
-            });
+                })
+                .catch(err => {
+                    // 识别失败
+                    showMsg('❌ 未识别到二维码。<br><br>可能原因：<br>1. 二维码本身太模糊或有反光<br>2. 图片中包含多个复杂的图形干扰<br>建议：尽量裁切图片，只保留二维码部分再试。', 'error');
+                })
+                .finally(() => {
+                    // 清空 input，允许重新上传同一张图
+                    fileInput.value = '';
+                });
         });
 
-        stopScanBtn.addEventListener('click', stopCamera);
-
-        // 停止摄像头
-        function stopCamera() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                    html5QrCode = null;
-                }).catch(err => { console.log(err); });
-            }
-            readerDiv.style.display = 'none';
-            stopScanBtn.style.display = 'none';
-        }
-
-        // 成功处理
+        // 成功后的处理
         function successHandle(text) {
-            showMsg(`✅ 扫描成功！<br><br><strong>内容：</strong><br>${text}`, 'success');
-            if (text.startsWith('http')) {
-                resultBox.innerHTML += `<br><br><a href="${text}" target="_blank" style="padding:8px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:4px;display:inline-block;">打开链接</a>`;
+            let html = `<span class="success">✅ 提取成功！</span><br><br><strong>解析内容：</strong><br><span style="font-size:16px;">${text}</span>`;
+            if (text.startsWith('http://') || text.startsWith('https://')) {
+                html += `<br><br><a href="${text}" target="_blank" style="display:inline-block; padding:10px 20px; background:#28a745; color:white; text-decoration:none; border-radius:5px;">🔗 打开链接</a>`;
             }
+            resultBox.innerHTML = html;
         }
 
-        // 显示消息
+        // 显示信息
         function showMsg(html, type) {
             let colorClass = '';
-            if (type === 'success') colorClass = 'success';
             if (type === 'error') colorClass = 'error';
             if (type === 'info') colorClass = 'info';
             resultBox.innerHTML = `<span class="${colorClass}">${html}</span>`;
         }
     </script>
+
 </body>
 
 </html>
