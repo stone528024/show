@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>图片核验系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <style>
+        :root {
+            --primary-color: #007aff;
+            --success-color: #34c759;
+            --warning-color: #ff9500;
+            --text-main: #1d1d1f;
+            --text-secondary: #86868b;
+            --bg-light: #fcfcfd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 裁剪遮罩层 */
+        #cropperModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .cropper-container-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #cropperImage {
+            max-width: 100%;
+            display: block;
+        }
+
+        .cropper-toolbar {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .crop-tips {
+            color: #fff;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .btn-confirm {
+            padding: 10px 24px;
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+        }
+
+        .btn-cancel {
+            color: #fff;
+            font-size: 14px;
+            margin-right: 20px;
+            background: transparent;
+            border: none;
+        }
+
+        .bg-soft {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            background: radial-gradient(circle at 50% -10%, #e8f0ff 0%, transparent 80%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-header {
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            font-size: 19px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-thin {
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-left: 2px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 5px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(4px);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #d2d2d7;
+            margin-right: 6px;
+        }
+
+        .dot.loading {
+            background: var(--primary-color);
+            box-shadow: 0 0 5px rgba(0, 122, 255, 0.4);
+        }
+
+        .dot.success {
+            background: var(--success-color);
+            box-shadow: 0 0 5px rgba(52, 199, 89, 0.4);
+        }
+
+        .dot.external {
+            background: var(--warning-color);
+        }
+
+        .status-text {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .main-viewport {
+            flex: 1;
+            padding: 0 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .scanning-hero {
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .scan-frame {
+            width: 220px;
+            height: 220px;
+            position: relative;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            transition: all 0.5s ease;
+        }
+
+        .scan-frame.is-loading {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--primary-color);
+        }
+
+        .corner.tl {
+            top: -5px;
+            left: -5px;
+            border-right: 0;
+            border-bottom: 0;
+            border-radius: 15px 0 0 0;
+        }
+
+        .corner.tr {
+            top: -5px;
+            right: -5px;
+            border-left: 0;
+            border-bottom: 0;
+            border-radius: 0 15px 0 0;
+        }
+
+        .corner.bl {
+            bottom: -5px;
+            left: -5px;
+            border-right: 0;
+            border-top: 0;
+            border-radius: 0 0 0 15px;
+        }
+
+        .corner.br {
+            bottom: -5px;
+            right: -5px;
+            border-left: 0;
+            border-top: 0;
+            border-radius: 0 0 15px 0;
+        }
+
+        .hero-icon {
+            font-size: 40px;
+        }
+
+        .loading-ring {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f2f2f7;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .hero-text {
+            text-align: center;
+        }
+
+        .hero-text .title {
+            font-size: 22px;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .hero-text .desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        #scannerView {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+        }
+
+        #videoPreview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .scanner-box {
+            width: 260px;
+            height: 260px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.5);
+        }
+
+        .scanner-box .line {
+            position: absolute;
+            left: 5px;
+            right: 5px;
+            height: 2px;
+            background: var(--primary-color);
+            box-shadow: 0 0 8px var(--primary-color);
+            animation: scan-move-live 2s linear infinite;
+        }
+
+        @keyframes scan-move-live {
+            0% {
+                top: 0%;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+
+        .scanner-tips {
+            margin-top: 40px;
+            color: #fff;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+
+        .scanner-close {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .result-view {
+            padding-bottom: 120px;
+        }
+
+        .certificate-card,
+        .external-card {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+            margin-bottom: 20px;
+        }
+
+        .cert-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .success-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--success-color);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .cert-title .main {
+            font-size: 20px;
+            font-weight: 700;
+            display: block;
+        }
+
+        .cert-title .tag {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--success-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stamp-box {
+            position: absolute;
+            right: -10px;
+            top: -5px;
+        }
+
+        .stamp {
+            border: 2px solid rgba(52, 199, 89, 0.3);
+            color: rgba(52, 199, 89, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 900;
+            transform: rotate(-15deg);
+        }
+
+        .report-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f2f2f7;
+            padding-bottom: 5px;
+        }
+
+        .data-row {
+            /* display: flex;
+            justify-content: space-between; */
+        }
+
+        .data-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .data-item .label {
+            font-size: 10px;
+            color: #aeaea7;
+            margin-bottom: 2px;
+        }
+
+        .data-item .value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .data-item .highlight {
+            color: var(--primary-color);
+        }
+
+        .location-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .location-box .address {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .location-box .coords {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .tech-cell .label {
+            font-size: 10px;
+            color: #aeaea7;
+            margin-bottom: 2px;
+        }
+
+        .tech-cell .value {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .warning-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .warning-icon {
+            width: 30px;
+            height: 30px;
+            background: var(--warning-color);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .warning-text {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .info-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .raw-content {
+            background: #f5f5f7;
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        .raw-content .label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .content-scroll {
+            width: 100%;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .content-text {
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .floating-bar {
+            position: fixed;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            border: none;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-main {
+            flex: 1;
+            height: 55px;
+            background: #1d1d1f;
+            color: #fff;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-main:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        .btn-reset {
+            width: 100%;
+            height: 50px;
+            background: #f5f5f7;
+            color: #86868b;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn-reset:active {
+            background: #e5e5ea;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-fade {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="app-container">
+        <!-- 裁剪弹窗 -->
+        <div id="cropperModal">
+            <div class="cropper-container-wrapper">
+                <img id="cropperImage">
+            </div>
+            <div class="cropper-toolbar">
+                <div class="crop-tips">请手动缩放并框选二维码区域</div>
+                <div style="display: flex; align-items: center;">
+                    <button class="btn-cancel" onclick="closeCropper()">取消</button>
+                    <button class="btn-confirm" onclick="confirmCrop()">开始核验</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="scannerView">
+            <video id="videoPreview" playsinline></video>
+            <div class="scanner-overlay">
+                <div class="scanner-box">
+                    <div class="line"></div>
+                </div>
+                <div class="scanner-tips">对准二维码即可自动扫描</div>
+            </div>
+            <div class="scanner-close" onclick="stopScanner()">✕</div>
+        </div>
+        <div class="bg-soft"></div>
+        <header class="app-header">
+            <div class="header-content">
+                <div class="brand">核验<span class="brand-thin">图片</span></div>
+                <div class="status-indicator">
+                    <div id="statusDot" class="dot"></div>
+                    <span id="statusLabel" class="status-text">待命</span>
+                </div>
+            </div>
+        </header>
+        <main class="main-viewport">
+            <div id="idleState" class="scanning-hero animate-fade">
+                <div id="scanFrame" class="scan-frame">
+                    <div class="corner tl"></div>
+                    <div class="corner tr"></div>
+                    <div class="corner bl"></div>
+                    <div class="corner br"></div>
+                    <div class="hero-icon" id="heroIcon">🔍</div>
+                </div>
+                <div class="hero-text">
+                    <span class="title" id="heroTitle">准备就绪</span>
+                    <span class="desc" id="heroDesc">请上传图片或扫码进行核验</span>
+                </div>
+            </div>
+            <div id="successState" class="result-view animate-slide-up" style="display: none;">
+                <div class="certificate-card">
+                    <div class="cert-header">
+                        <div class="success-icon">✓</div>
+                        <div class="cert-title"><span class="main">核验通过</span><span class="tag">数字签名认证成功</span></div>
+                        <div class="stamp-box">
+                            <div class="stamp">CERTIFIED</div>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <div class="section-title">核验摘要</div>
+                        <div class="data-row">
+                            <div class="data-item"><span class="label">存证编号</span><span class="value highlight"
+                                    id="metaId"></span></div>
+                            <div class="data-item"><span class="label">核验时间</span><span class="value"
+                                    id="metaTime"></span></div>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <div class="section-title">地理信息</div>
+                        <div class="location-box"><span class="address" id="metaAddress"></span><span class="coords"
+                                id="metaCoords"></span></div>
+                    </div>
+                    <div class="report-section">
+                        <div class="section-title">设备参数</div>
+                        <div class="tech-grid">
+                            <!-- <div class="tech-cell"><span class="label">拍摄设备</span><span class="value"
+                                    id="metaDevice"></span></div> -->
+                            <div class="tech-cell"><span class="label">分辨率</span><span class="value"
+                                    id="metaRes"></span></div>
+                            <div class="tech-cell"><span class="label">感光度</span><span class="value"
+                                    id="metaIso"></span></div>
+                            <div class="tech-cell"><span class="label">光圈</span><span class="value"
+                                    id="metaAperture"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="externalState" class="result-view animate-slide-up" style="display: none;">
+                <div class="external-card">
+                    <div class="warning-header">
+                        <div class="warning-icon">!</div><span class="warning-text">非受信任来源</span>
+                    </div>
+                    <div class="external-info">
+                        <span class="info-desc">无法验证该内容的物理溯源信息。</span>
+                        <div class="raw-content">
+                            <span class="label">原始内容</span>
+                            <div class="content-scroll"><span class="content-text" id="rawContentText"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <div class="floating-bar">
+            <div id="idleActions" class="action-buttons">
+                <button class="btn-main" onclick="startScanner()">立即扫码</button>
+                <button class="btn-main" style="background: #fff; color: #1d1d1f; border: 1px solid #e5e5ea;"
+                    onclick="triggerScan()">从相册选择</button>
+            </div>
+            <div id="resetActions" class="action-buttons" style="display: none;">
+                <button class="btn-reset" onclick="reset()">重新核验</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+        const state = {
+            status: 'idle', rawContent: '', metadata: {}, stream: null, scanning: false
+        };
+        const statusMap = { idle: '待命', loading: '核验中', success: '已认证', external: '非受信' };
+
+        const zxingReader = new ZXing.BrowserQRCodeReader();
+        let cropper = null;
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 24px; font-size: 14px; z-index: 1000; white-space: nowrap; backdrop-filter: blur(10px); animation: fadeIn 0.3s;`;
+            toast.innerText = msg; document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3000);
+        }
+
+        async function startScanner() {
+            if (window.location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+                showToast('实时扫码需 HTTPS 环境，请使用“从相册选择”'); return;
+            }
+            try {
+                const video = document.getElementById('videoPreview');
+                document.getElementById('scannerView').style.display = 'flex';
+                state.scanning = true;
+
+                // 核心修复：配置更高清的视频流约束
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // 强制优先使用后置摄像头
+                        width: { ideal: 1280, max: 1920 }, // 优先请求 720p/1080p 高清画面
+                        height: { ideal: 720, max: 1080 }
+                    }
+                };
+
+                // 使用 decodeFromConstraints 替代原来的 decodeFromVideoDevice
+                zxingReader.decodeFromConstraints(constraints, video, (result, err) => {
+                    if (result) {
+                        // 扫码成功
+                        stopScanner();
+                        processResult(result.getText());
+                    }
+                    // 注意：这里的 err 不需要处理，因为视频流每秒有几十帧，
+                    // 只要有一帧没扫到二维码，ZXing 就会抛出一个 NotFoundError，这是正常的。
+                });
+            } catch (err) {
+                console.error("启动相机失败:", err);
+                document.getElementById('scannerView').style.display = 'none';
+                showToast('无法访问高清摄像头，请检查权限');
+            }
+        }
+
+        function stopScanner() {
+            zxingReader.reset();
+            state.scanning = false; document.getElementById('scannerView').style.display = 'none';
+        }
+
+        function triggerScan() { document.getElementById('fileInput').click(); }
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (event) => initCropper(event.target.result);
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        function initCropper(source) {
+            const modal = document.getElementById('cropperModal');
+            const image = document.getElementById('cropperImage');
+            image.src = source;
+            modal.style.display = 'flex';
+
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(image, {
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.5,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+            });
+        }
+
+        function closeCropper() {
+            document.getElementById('cropperModal').style.display = 'none';
+            if (cropper) cropper.destroy();
+            document.getElementById('fileInput').value = '';
+        }
+
+        async function confirmCrop() {
+            if (!cropper) return;
+
+            // 1. 获取裁剪后的 Canvas（默认开启平滑，这对缩小或放大都很重要）
+            const croppedCanvas = cropper.getCroppedCanvas();
+
+            // 2. 保证图片有一定的基础分辨率 (如果裁得太小，比如只有 50px，适度放大到 300px)
+            const minSize = 300;
+            const maxDimension = Math.max(croppedCanvas.width, croppedCanvas.height);
+            const scale = maxDimension < minSize ? (minSize / maxDimension) : 1;
+
+            // 3. 补白边 (Quiet Zone)
+            const padding = 40;
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = (croppedCanvas.width * scale) + padding * 2;
+            finalCanvas.height = (croppedCanvas.height * scale) + padding * 2;
+
+            const fCtx = finalCanvas.getContext('2d');
+            fCtx.fillStyle = '#ffffff';
+            fCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+            // 绘制图像（利用默认的平滑算法）
+            fCtx.drawImage(
+                croppedCanvas,
+                padding,
+                padding,
+                croppedCanvas.width * scale,
+                croppedCanvas.height * scale
+            );
+
+            closeCropper();
+            state.status = 'loading';
+            updateUI();
+
+            // 延迟一点点让 UI 动画先渲染出来
+            setTimeout(async () => {
+                try {
+                    let text = '';
+
+                    // 方案A：优先尝试原生 API (极速)
+                    if ('BarcodeDetector' in window) {
+                        try {
+                            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                            const codes = await detector.detect(finalCanvas);
+                            if (codes.length > 0) {
+                                text = codes[0].rawValue;
+                            }
+                        } catch (e) {
+                            console.warn('BarcodeDetector 失败，准备降级', e);
+                        }
+                    }
+
+                    // 方案B：使用 jsQR 兜底 (极其稳定，直接读取像素)
+                    if (!text && window.jsQR) {
+                        // 获取 Canvas 里的原始像素数据
+                        const imageData = fCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
+                        // jsQR 解析
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert", // 不尝试反色扫描，加快速度
+                        });
+
+                        if (code) {
+                            text = code.data;
+                        }
+                    }
+
+                    if (text) {
+                        processResult(text);
+                    } else {
+                        throw new Error('QR not found');
+                    }
+                } catch (err) {
+                    console.error('识别失败:', err);
+                    state.status = 'idle';
+                    updateUI();
+                    showToast('未能识别到二维码，请框选完整并保证图片清晰');
+                }
+            }, 50);
+        }
+
+        async function processResult(result) {
+            state.status = 'loading';
+            state.rawContent = result;
+            updateUI();
+            await fetchVerificationData(result);
+        }
+
+        async function fetchVerificationData(text) {
+            // const API_BASE = 'http://192.168.0.143:8080/api/archive/verifyResource/';
+            const API_BASE = 'https://hz.gaojiaomedia.cn/gong-cheng/api/archive/verifyResource/';
+            try {
+                const response = await fetch(`${API_BASE}${text}`);
+                if (!response.ok) throw new Error('网络请求失败');
+
+                // --- 严格遵守用户要求的代码结构 ---
+                const resData = await response.json();
+                let { data } = resData;
+                // ---------------------------------
+
+                if (data && data.id !== undefined) {
+                    state.status = 'success';
+                    state.metadata = {
+                        id: data.photoSecurityCode || data.id,
+                        verifyTime: data.createTime ? new Date(data.createTime).toLocaleString() : new Date().toLocaleString(),
+                        location: { address: data.address || '未知地点', coords: data.latlgn || '0,0' },
+                        device: { model: data.cameraModel || '未知设备', resolution: data.resolution || 'N/A', iso: '-', aperture: '-' }
+                    };
+                } else {
+                    state.status = 'external';
+                }
+                updateUI();
+            } catch (err) {
+                console.error('请求出错:', err);
+                state.status = 'external';
+                state.rawContent = '无法获取验证数据，可能为非受信任来源';
+                updateUI();
+                showToast('无法连接到验证服务器');
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('statusDot').className = 'dot ' + state.status;
+            document.getElementById('statusLabel').innerText = statusMap[state.status];
+            document.getElementById('idleState').style.display = (state.status === 'idle' || state.status === 'loading') ? 'flex' : 'none';
+            document.getElementById('successState').style.display = (state.status === 'success') ? 'block' : 'none';
+            document.getElementById('externalState').style.display = (state.status === 'external') ? 'block' : 'none';
+            document.getElementById('idleActions').style.display = (state.status === 'idle') ? 'flex' : 'none';
+            document.getElementById('resetActions').style.display = (state.status !== 'idle' && state.status !== 'loading') ? 'flex' : 'none';
+            const icon = document.getElementById('heroIcon');
+            const title = document.getElementById('heroTitle');
+            if (state.status === 'loading') { document.getElementById('scanFrame').classList.add('is-loading'); icon.innerHTML = '<div class="loading-ring"></div>'; title.innerText = '正在智能解析...'; }
+            else { document.getElementById('scanFrame').classList.remove('is-loading'); icon.innerHTML = '🔍'; title.innerText = '准备就绪'; }
+            if (state.status === 'success') {
+                document.getElementById('metaId').innerText = state.metadata.id || '-';
+                document.getElementById('metaTime').innerText = state.metadata.verifyTime || '-';
+                document.getElementById('metaAddress').innerText = state.metadata.location?.address || '-';
+                document.getElementById('metaCoords').innerText = state.metadata.location?.coords || '-';
+                // document.getElementById('metaDevice').innerText = state.metadata.device?.model || '-';
+                document.getElementById('metaRes').innerText = state.metadata.device?.resolution || '-';
+                document.getElementById('metaIso').innerText = 'ISO ' + (state.metadata.device?.iso || '-');
+                document.getElementById('metaAperture').innerText = 'f/' + (state.metadata.device?.aperture || '-');
+            }
+            if (state.status === 'external') document.getElementById('rawContentText').innerText = state.rawContent;
+        }
+
+        function reset() { state.status = 'idle'; state.rawContent = ''; document.getElementById('fileInput').value = ''; updateUI(); }
+
+        window.onload = () => {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const imgUrl = params.get('img') || params.get('url');
+            if (code) { processResult(code); }
+            else if (imgUrl) { initCropper(imgUrl); }
+            else { updateUI(); }
+        };
+    </script>
+</body>
+
+</html>
