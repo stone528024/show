@@ -187,18 +187,17 @@
         const stopScanBtn = document.getElementById('stopScanBtn');
         const scanLine = document.getElementById('scan-line');
 
-        let scanning = false; // 摄像头扫描状态标志
+        let scanning = false;
+        let lastScanTime = 0; // 新增：用于控制扫描频率的变量
 
         // ==========================================
-        // 1. 上传图片识别逻辑 (右上角识别)
+        // 1. 上传图片识别逻辑 (保持不变)
         // ==========================================
         fileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            // 如果摄像头开着，先关掉
             stopCamera();
-
             showMsg('正在处理图片...', 'info');
             previewContainer.style.display = 'block';
 
@@ -210,26 +209,22 @@
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0, img.width, img.height);
 
-                    // 定义右上角区域 (宽高各占40%)
                     const cropRatio = 0.4;
                     const cropWidth = Math.floor(img.width * cropRatio);
                     const cropHeight = Math.floor(img.height * cropRatio);
                     const startX = img.width - cropWidth;
                     const startY = 0;
 
-                    // 画个红框提示用户
                     ctx.strokeStyle = "red";
                     ctx.lineWidth = 5;
                     ctx.strokeRect(startX, startY, cropWidth, cropHeight);
 
-                    // 获取右上角像素
                     const imageData = ctx.getImageData(startX, startY, cropWidth, cropHeight);
                     const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
                     if (code) {
                         showMsg(`✅ 右上角识别成功！<br><br><strong>内容：</strong><br>${code.data}`, 'success');
                     } else {
-                        // 容错：全图扫描
                         const fullImageData = ctx.getImageData(0, 0, img.width, img.height);
                         const fullCode = jsQR(fullImageData.data, fullImageData.width, fullImageData.height);
                         if (fullCode) {
@@ -245,25 +240,31 @@
         });
 
         // ==========================================
-        // 2. 摄像头扫一扫逻辑 (全屏扫描)
+        // 2. 摄像头扫一扫逻辑 (优化版)
         // ==========================================
         startScanBtn.addEventListener('click', () => {
-            // 隐藏图片预览，清空提示
             previewContainer.style.display = 'none';
             showMsg('正在请求摄像头权限...', 'info');
 
-            // 调用摄像头 (优先使用后置摄像头 environment)
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            // 优化点1：强制要求较高的分辨率 (720p)，让二维码更清晰
+            const constraints = {
+                video: {
+                    facingMode: "environment",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then(function (stream) {
                     scanning = true;
                     cameraContainer.style.display = 'block';
                     scanLine.style.display = 'block';
                     video.srcObject = stream;
-                    // 防止 iOS 自动全屏播放
                     video.setAttribute("playsinline", true);
                     video.play();
 
-                    showMsg('请将二维码对准摄像头...', 'info');
+                    showMsg('请将二维码对准摄像头，保持稳定...', 'info');
                     requestAnimationFrame(tick);
                 })
                 .catch(function (err) {
@@ -278,23 +279,35 @@
             if (!scanning) return;
 
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                // 利用隐藏的画布截取视频当前帧
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const currentTime = Date.now();
 
-                // 扫描全图
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+                // 优化点2：降低扫描频率（节流）。每 300 毫秒才扫描一次。
+                // 这样能让视频画面保持丝滑，给手机摄像头留出自动对焦的时间
+                if (currentTime - lastScanTime > 300) {
 
-                if (code) {
-                    // 识别成功，停止扫描并显示结果
-                    stopCamera();
-                    showMsg(`✅ 扫描成功！<br><br><strong>内容：</strong><br>${code.data}`, 'success');
-                    return; // 结束循环
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    // 优化点3：inversionAttempts 改为 attemptBoth 
+                    // 会消耗多一点点时间，但能识别黑底白字、反色等情况，大大增加容错率
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "attemptBoth"
+                    });
+
+                    if (code) {
+                        stopCamera();
+                        showMsg(`✅ 扫描成功！<br><br><strong>内容：</strong><br>${code.data}`, 'success');
+                        return; // 结束循环
+                    }
+
+                    lastScanTime = currentTime; // 记录这次扫描的时间
                 }
             }
-            // 如果没扫到，或者视频没准备好，继续下一帧
+
+            // 继续下一帧
             requestAnimationFrame(tick);
         }
 
@@ -309,9 +322,7 @@
             scanLine.style.display = 'none';
         }
 
-        // ==========================================
-        // 3. 辅助函数：显示消息
-        // ==========================================
+        // 显示消息
         function showMsg(html, type) {
             let colorClass = '';
             if (type === 'success') colorClass = 'success';
