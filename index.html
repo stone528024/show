@@ -4,9 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>终极原图二维码识别</title>
-    <!-- 引入强大的企业级识别引擎 html5-qrcode -->
+    <title>完美拍照二维码识别</title>
+    <!-- 引入强大的扫码引擎 -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- 引入图片压缩与方向纠正神器 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.min.js"></script>
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -75,7 +78,6 @@
             font-weight: bold;
         }
 
-        /* 图片预览区 */
         #preview-img {
             max-width: 100%;
             height: auto;
@@ -83,6 +85,7 @@
             display: none;
             border: 1px solid #ddd;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -90,23 +93,22 @@
 <body>
 
     <div class="container">
-        <h2 style="margin-top:0;">📸 高精度图片识别</h2>
+        <h2 style="margin-top:0;">📸 完美拍照扫码器</h2>
         <p style="font-size: 13px; color: #666; text-align: left;">
-            系统将直接分析原始高清图像（无论二维码在右上角还是哪个位置都能精准捕获）。
+            已内置相片方向自动纠正功能，彻底解决手机拍照无法识别的问题。
         </p>
 
-        <!-- 选择文件按钮 -->
-        <label class="upload-btn" for="fileInput">📷 拍照 / 从相册选择</label>
+        <!-- 加上 capture="environment" 提示手机优先打开后置相机拍照 -->
+        <label class="upload-btn" for="fileInput">📷 拍照 / 选图识别</label>
         <input type="file" id="fileInput" accept="image/*">
 
         <div id="result-box">
-            等待上传图片...
+            等待操作...
         </div>
 
-        <!-- 原生图片预览，避免 Canvas 导致图片模糊 -->
+        <!-- 预览图 -->
         <img id="preview-img" alt="预览图">
-
-        <!-- 引擎需要的隐藏占位符 -->
+        <!-- 引擎占位符 -->
         <div id="reader-placeholder" style="display: none;"></div>
     </div>
 
@@ -115,37 +117,51 @@
         const resultBox = document.getElementById('result-box');
         const previewImg = document.getElementById('preview-img');
 
-        // 初始化强大的扫码引擎
+        // 初始化扫码引擎
         const html5QrCode = new Html5Qrcode("reader-placeholder");
 
         fileInput.addEventListener('change', function (e) {
             if (e.target.files.length === 0) return;
 
             const file = e.target.files[0];
+            showMsg('📷 正在校正照片并解析中，请稍候...', 'info');
 
-            // 1. UI 变化：显示原图预览，提示正在解析
-            previewImg.src = URL.createObjectURL(file);
-            previewImg.style.display = 'block';
-            showMsg('正在使用强力引擎解析原图，请稍候...', 'info');
+            // ==========================================
+            // 核心黑科技：使用 Compressor.js 修复拍照问题
+            // ==========================================
+            new Compressor(file, {
+                quality: 0.8,
+                maxWidth: 1600,  // 限制最大宽度，防止千万像素卡死浏览器
+                maxHeight: 1600,
+                checkOrientation: true, // ★ 最关键参数：自动读取手机硬件角度，把横向乱码的照片转正！
 
-            // 2. 核心：直接把 File 对象传给引擎，不经过任何 Canvas 污染！
-            // 第二个参数 false 表示不输出底层日志
-            html5QrCode.scanFile(file, false)
-                .then(decodedText => {
-                    // 识别成功
-                    successHandle(decodedText);
-                })
-                .catch(err => {
-                    // 识别失败
-                    showMsg('❌ 未识别到二维码。<br><br>可能原因：<br>1. 二维码本身太模糊或有反光<br>2. 图片中包含多个复杂的图形干扰<br>建议：尽量裁切图片，只保留二维码部分再试。', 'error');
-                })
-                .finally(() => {
-                    // 清空 input，允许重新上传同一张图
-                    fileInput.value = '';
-                });
+                success(resultBlob) {
+                    // 将修复后的照片转化为 File 对象
+                    const fixedFile = new File([resultBlob], file.name, { type: file.type });
+
+                    // 显示修复后的预览图
+                    previewImg.src = URL.createObjectURL(fixedFile);
+                    previewImg.style.display = 'block';
+
+                    // 交给扫码引擎进行极速解析
+                    html5QrCode.scanFile(fixedFile, false)
+                        .then(decodedText => {
+                            successHandle(decodedText);
+                        })
+                        .catch(err => {
+                            showMsg('❌ 未识别到二维码。<br><br>可能原因：<br>1. 拍照手抖模糊<br>2. 距离过远导致二维码太小<br>建议：把手机稍微拉远一点点，保证画面清晰再拍。', 'error');
+                        })
+                        .finally(() => {
+                            fileInput.value = ''; // 允许重复拍照
+                        });
+                },
+                error(err) {
+                    showMsg('照片处理失败: ' + err.message, 'error');
+                },
+            });
         });
 
-        // 成功后的处理
+        // 成功处理
         function successHandle(text) {
             let html = `<span class="success">✅ 提取成功！</span><br><br><strong>解析内容：</strong><br><span style="font-size:16px;">${text}</span>`;
             if (text.startsWith('http://') || text.startsWith('https://')) {
@@ -154,7 +170,6 @@
             resultBox.innerHTML = html;
         }
 
-        // 显示信息
         function showMsg(html, type) {
             let colorClass = '';
             if (type === 'error') colorClass = 'error';
