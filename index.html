@@ -1,2 +1,625 @@
-<!DOCTYPE html><html lang=zh-CN><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><title>智能情趣用品控制app</title><script>var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') || CSS.supports('top: constant(a)'))
-            document.write('<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' + (coverSupport ? ', viewport-fit=cover' : '') + '" />')</script><link rel=stylesheet href=/static/index.2da1efab.css></head><body><noscript><strong>Please enable JavaScript to continue.</strong></noscript><div id=app></div><script src=/static/js/chunk-vendors.8f4e8701.js></script><script src=/static/js/index.42623d72.js></script></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>校惠享·档口核销操作指引</title>
+    <style>
+        :root {
+            --brand-red: #ea3a13;
+            --brand-orange: #b13712;
+            --bg-gray: #f4f5f8;
+            --text-dark: #1f1f1f;
+            --text-muted: #7a7a7a;
+            --green-tag: #07c160;
+            --green-bg: #e8f8ee;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-gray);
+            color: var(--text-dark);
+            line-height: 1.45;
+            padding-bottom: calc(90px + env(safe-area-inset-bottom));
+        }
+
+        /* 顶部标题栏 */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #ffffff;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #ebebeb;
+        }
+
+        .app-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #111;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .app-badge {
+            background: var(--brand-red);
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* 主体布局 */
+        .container {
+            padding: 12px 14px;
+        }
+
+        /* 步骤卡片 */
+        .step-block {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 16px 14px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .step-title-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .step-tag {
+            background: #fff0ed;
+            color: var(--brand-red);
+            font-weight: 800;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid #ffcfc4;
+        }
+
+        .step-text {
+            font-size: 15px;
+            font-weight: 700;
+            color: #222;
+        }
+
+        /* 模拟微信小程序截图容器（图文框） */
+        .ui-mock-box {
+            background: #f8f9fa;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px 10px;
+            margin: 10px 0;
+            position: relative;
+        }
+
+        /* 红色交互标注气泡 */
+        .action-pointer {
+            position: absolute;
+            background: #ff3b30;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4);
+            animation: bounce 1.4s infinite ease-in-out;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .action-pointer::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px 5px 0 5px;
+            border-style: solid;
+            border-color: #ff3b30 transparent transparent transparent;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-4px);
+            }
+        }
+
+        /* 图1: 模拟登录与授权卡片 */
+        .mock-profile-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .profile-row-1 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .mock-shop {
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-green-mini {
+            background: var(--green-bg);
+            color: var(--green-tag);
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .mock-auth-btn {
+            background: #f0f2f5;
+            color: #333;
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-weight: 600;
+            border: 1px solid #e0e0e0;
+        }
+
+        .profile-row-2 {
+            border-top: 1px dashed #eee;
+            padding-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #777;
+        }
+
+        /* 图2: 模拟双模式核销卡片 */
+        .mock-verify-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .mock-scan-btn {
+            background: #a93714;
+            color: #fff;
+            border-radius: 8px;
+            padding: 12px 10px;
+            position: relative;
+        }
+
+        .mock-scan-btn .big-text {
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .mock-scan-btn .sub-text {
+            font-size: 10.5px;
+            opacity: 0.85;
+        }
+
+        .mock-input-btn {
+            background: #ffffff;
+            border: 1px solid #e3e5e9;
+            border-radius: 8px;
+            padding: 12px 10px;
+        }
+
+        .mock-input-btn .big-text {
+            font-size: 14px;
+            font-weight: 800;
+            color: #111;
+            margin-bottom: 4px;
+        }
+
+        .mock-input-btn .sub-text {
+            font-size: 10.5px;
+            color: #888;
+        }
+
+        /* 图4: 模拟完善门头图与商品图 */
+        .mock-shop-editor {
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .mock-banner-img {
+            background: #2b2b2b;
+            color: #fff;
+            height: 95px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            position: relative;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=60');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .mock-replace-tag {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #ea3a13;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+
+        .mock-goods-grid {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .mock-good-slot {
+            width: 58px;
+            height: 58px;
+            border: 1px dashed #f04823;
+            background: #fff5f3;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #f04823;
+            font-weight: 600;
+        }
+
+        /* 图3: 模拟流水对账卡片 */
+        .mock-flow-card {
+            background: #a93714;
+            color: #fff;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mock-flow-card .title {
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .mock-flow-card .sub {
+            font-size: 11px;
+            opacity: 0.85;
+            margin-top: 2px;
+        }
+
+        .mock-flow-btn {
+            background: #fff;
+            color: #a93714;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 14px;
+        }
+
+        /* 步骤说明要点 */
+        .desc-p {
+            font-size: 13px;
+            color: #555;
+            margin: 6px 0 2px;
+        }
+
+        .desc-p strong {
+            color: #111;
+        }
+
+        .warning-text {
+            color: #d93026;
+            font-size: 12px;
+            background: #fdf2f2;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* 常驻扫码卡片（最稳入口） */
+        .bottom-qr-box {
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            border: 2px dashed #f04823;
+        }
+
+        .qr-img {
+            width: 175px;
+            height: 175px;
+            display: block;
+            margin: 10px auto;
+            border-radius: 8px;
+        }
+
+        .qr-tip {
+            display: inline-block;
+            background: #fff0ed;
+            color: var(--brand-red);
+            font-weight: 700;
+            font-size: 12.5px;
+            padding: 5px 14px;
+            border-radius: 16px;
+        }
+
+        /* 底部固定条 */
+        .footer-action {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border-top: 1px solid #ebebeb;
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .btn-ghost {
+            background: #f1f2f5;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            padding: 0 16px;
+            height: 42px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .btn-main {
+            flex: 1;
+            background: linear-gradient(90deg, #ea3a13, #f04823);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            height: 42px;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 3px 8px rgba(234, 58, 19, 0.3);
+        }
+
+        /* 弹窗遮罩 */
+        .modal-mask {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 22px 18px;
+            text-align: center;
+            width: 100%;
+            max-width: 290px;
+            position: relative;
+        }
+
+        .close-icon {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            font-size: 20px;
+            color: #999;
+            background: none;
+            border: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 顶栏 -->
+    <div class="app-header">
+        <div class="app-title">
+            <span>校惠享·商户端</span>
+            <span class="app-badge">操作SOP</span>
+        </div>
+        <div style="font-size: 12px; color: #777;">档口专用</div>
+    </div>
+
+    <div class="container">
+
+        <!-- 第1步：登录与授权 -->
+        <div class="step-block">
+            <div class="step-title-bar">
+                <span class="step-tag">步骤 1</span>
+                <span class="step-text">进入小程序与一键授权</span>
+            </div>
+
+            <!-- 仿图1界面UI -->
+            <div class="ui-mock-box">
+                <div class="action-pointer" style="top: -6px; right: 12px;">点这里授权 👇</div>
+                <div class="mock-profile-card">
+                    <div class="profile-row-1">
+                        <div class="mock-shop">🎪 我的档口 <span class="tag-green-mini">● 营业中</span></div>
+                        <div class="mock-auth-btn">📞 一键授权</div>
+                    </div>
+                    <div class="profile-row-2">
+                        <span>👨‍🍳 掌柜：负责人</span>
+                        <span style="color: #07c160; font-weight: 600;">高校认证档口</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="desc-p">1. 长按下方二维码或在聊天框进入小程序。</p>
+            <p class="desc-p">2. 首次进入在【个人中心】，点击右上角 <strong>【一键授权】</strong> 绑定手机号。</p>
+        </div>
+
+        <!-- 第2步：完善店铺信息 -->
+        <div class="step-block">
+            <div class="step-title-bar">
+                <span class="step-tag">步骤 2</span>
+                <span class="step-text">上传门头与招牌菜（提升领券）</span>
+            </div>
+
+            <!-- 仿图4修改资料UI -->
+            <div class="ui-mock-box">
+                <div class="mock-shop-editor">
+                    <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px;">门店门头与实景风貌</div>
+                    <div class="mock-banner-img">
+                        <span>点击上传档口大图</span>
+                        <span class="mock-replace-tag">📷 更换门头照</span>
+                    </div>
+                    <div style="font-size: 12px; font-weight: 700; margin-top: 8px;">招牌商品展照 (0/4)</div>
+                    <div class="mock-goods-grid">
+                        <div class="mock-good-slot">➕<br>添加商品</div>
+                        <div class="mock-good-slot" style="opacity: 0.6;">➕<br>添加商品</div>
+                        <div class="mock-good-slot" style="opacity: 0.6;">➕<br>添加商品</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="desc-p">1. 在个人中心点击 <strong>【修改资料】</strong>。</p>
+            <p class="desc-p">2. 拍摄上传<strong>清晰的门头照片</strong>与 <strong>4张招牌热销菜品</strong>。</p>
+            <p class="desc-p">3. 点击底部 <strong>【确认保存并同步到领券大厅】</strong>，学生端领券页面将优先展示你的档口！</p>
+        </div>
+
+        <!-- 第3步：核销操作 -->
+        <div class="step-block">
+            <div class="step-title-bar">
+                <span class="step-tag">步骤 3</span>
+                <span class="step-text">日常核销（支持两种模式）</span>
+            </div>
+
+            <!-- 仿图2双模式核销UI -->
+            <div class="ui-mock-box">
+                <div class="action-pointer" style="top: -6px; left: 24px;">日常点这个扫码 👇</div>
+                <div class="mock-verify-grid">
+                    <div class="mock-scan-btn">
+                        <div class="big-text">📷 扫一扫核销</div>
+                        <div class="sub-text">调起微信扫码快速验券</div>
+                    </div>
+                    <div class="mock-input-btn">
+                        <div class="big-text">✏️ 输码核销</div>
+                        <div class="sub-text">备用通道·报6位数字码</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="desc-p">切换至底部 <strong>【工作台】</strong>：</p>
+            <p class="desc-p">👉 <strong>模式A（扫一扫）：</strong>点击橙色大按钮，扫学生出示的二维码。</p>
+            <p class="desc-p">👉 <strong>模式B（输码）：</strong>扫码异常时，点击绿色按钮输入 <strong>6位数字券码</strong>。</p>
+            <div class="warning-text">⚠️ 必须等到屏幕弹出“核销成功”后再出餐！</div>
+        </div>
+
+        <!-- 第4步：查单与对账 -->
+        <div class="step-block">
+            <div class="step-title-bar">
+                <span class="step-tag">步骤 4</span>
+                <span class="step-text">核销流水与每日对账</span>
+            </div>
+
+            <!-- 仿图3核销流水卡片 -->
+            <div class="ui-mock-box">
+                <div class="action-pointer" style="top: -6px; right: 18px;">点这里查对账 👇</div>
+                <div class="mock-flow-card">
+                    <div>
+                        <div class="title">📄 核销订单与对账流水</div>
+                        <div class="sub">每笔核销流水实时回溯与统计</div>
+                    </div>
+                    <div class="mock-flow-btn">查看明细 ></div>
+                </div>
+            </div>
+
+            <p class="desc-p">进入【个人中心】点击 <strong>【查看明细】</strong>，可按日核对核销笔数、实收账目，下班对账不扯皮。</p>
+        </div>
+
+        <!-- 页面底部长按进入小程序码 -->
+        <div class="bottom-qr-box">
+            <div style="font-size: 15px; font-weight: 800; color: #111;">长按识别进入档口助手</div>
+            <!-- 这里已放置二维码展示位，微信内长按即可识别 -->
+            <img src="./static/qrcode.png" class="qr-img" alt="小程序码">
+            <div class="qr-tip">👆 长按上方二维码秒进小程序 👆</div>
+        </div>
+
+    </div>
+
+    <!-- 底部操作栏 -->
+    <div class="footer-action">
+        <button class="btn-ghost" onclick="copyShortLink()">复制短链</button>
+        <button class="btn-main" onclick="openQrModal()">长按打开小程序 ⚡</button>
+    </div>
+
+    <!-- 弹窗 -->
+    <div class="modal-mask" id="qrModal" onclick="closeModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <button class="close-icon" onclick="closeModal()">×</button>
+            <div style="font-size: 16px; font-weight: 800; margin-bottom: 4px;">进入校惠享小程序</div>
+            <img src="./static/qrcode.png" class="qr-img" style="margin: 8px auto;" alt="小程序码">
+            <div class="qr-tip">长按图片识别即可进入</div>
+        </div>
+    </div>
+
+    <script>
+        var SHORT_LINK = "#小程序://圣达碰一碰/HcCqgaYjFCAd6Pd";
+
+        function openQrModal() {
+            document.getElementById('qrModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('qrModal').style.display = 'none';
+        }
+
+        function copyShortLink() {
+            var input = document.createElement("input");
+            input.value = SHORT_LINK;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand("copy");
+            document.body.removeChild(input);
+            alert("短链已复制！可直接发送至微信聊天框点击秒开。");
+        }
+    </script>
+</body>
+
+</html>
