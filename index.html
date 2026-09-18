@@ -9,12 +9,14 @@
     <style>
         :root {
             --brand-red: #ea3a13;
-            --brand-orange: #b13712;
+            --brand-orange: #a93714;
             --bg-gray: #f4f5f8;
             --text-dark: #1f1f1f;
             --text-muted: #7a7a7a;
             --green-tag: #07c160;
             --green-bg: #e8f8ee;
+            --warn-red: #d93026;
+            --warn-bg: #fdf2f2;
         }
 
         * {
@@ -67,20 +69,70 @@
             padding: 12px 14px;
         }
 
+        /* ⚠️ 置顶超级预警卡片（强调手机号一致） */
+        .important-alert-card {
+            background: #fff;
+            border: 2px solid var(--warn-red);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 12px rgba(217, 48, 38, 0.08);
+            position: relative;
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--warn-red);
+            font-size: 15px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .alert-content {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .alert-highlight {
+            color: var(--warn-red);
+            font-weight: 800;
+            background: var(--warn-bg);
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+
+        .alert-footer {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #ffd0ce;
+            font-size: 12px;
+            color: #c02015;
+            font-weight: 600;
+        }
+
         /* 步骤卡片 */
         .step-block {
             background: #ffffff;
             border-radius: 14px;
             padding: 16px 14px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
 
         .step-title-bar {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .step-left {
+            display: flex;
+            align-items: center;
             gap: 8px;
-            margin-bottom: 12px;
         }
 
         .step-tag {
@@ -93,10 +145,25 @@
             border: 1px solid #ffcfc4;
         }
 
+        .step-tag.optional {
+            background: #fffbe6;
+            color: #d46b08;
+            border-color: #ffe58f;
+        }
+
         .step-text {
             font-size: 15px;
             font-weight: 700;
             color: #222;
+        }
+
+        .tag-notice {
+            font-size: 11px;
+            color: #d46b08;
+            background: #fffbe6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
         }
 
         /* 模拟微信小程序截图容器（图文框） */
@@ -150,7 +217,7 @@
             }
         }
 
-        /* 图1: 模拟登录与授权卡片 */
+        /* 模拟图1: 登录与授权卡片 */
         .mock-profile-card {
             background: #fff;
             border-radius: 8px;
@@ -200,7 +267,7 @@
             color: #777;
         }
 
-        /* 图2: 模拟双模式核销卡片 */
+        /* 模拟图2: 双模式核销卡片 */
         .mock-verify-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -208,7 +275,7 @@
         }
 
         .mock-scan-btn {
-            background: #a93714;
+            background: var(--brand-orange);
             color: #fff;
             border-radius: 8px;
             padding: 12px 10px;
@@ -245,38 +312,58 @@
             color: #888;
         }
 
-        /* 图4: 模拟完善门头图与商品图 */
+        /* 模拟图4: 完善店铺资料 UI（完整呈现） */
         .mock-shop-editor {
             background: #fff;
             border-radius: 8px;
             padding: 10px;
+            border: 1px solid #eee;
         }
 
-        .mock-banner-img {
-            background: #2b2b2b;
-            color: #fff;
-            height: 95px;
-            border-radius: 6px;
+        .mock-editor-top {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            position: relative;
-            background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=60');
+            justify-content: space-between;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .mock-banner-preview {
+            height: 100px;
+            border-radius: 6px;
+            background-color: #2e2e2e;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500&q=60');
             background-size: cover;
             background-position: center;
+            position: relative;
+            padding: 10px;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
         }
 
-        .mock-replace-tag {
+        .banner-tag-left {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: var(--brand-red);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .mock-change-btn {
             position: absolute;
             bottom: 8px;
             right: 8px;
-            background: rgba(255, 255, 255, 0.9);
+            background: #fff;
             color: #ea3a13;
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 700;
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .mock-goods-grid {
@@ -285,7 +372,7 @@
             margin-top: 10px;
         }
 
-        .mock-good-slot {
+        .mock-slot {
             width: 58px;
             height: 58px;
             border: 1px dashed #f04823;
@@ -300,9 +387,31 @@
             font-weight: 600;
         }
 
-        /* 图3: 模拟流水对账卡片 */
+        .mock-inputs-fake {
+            margin-top: 10px;
+            background: #f4f6fa;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 12px;
+            color: #8c8c8c;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .mock-save-btn {
+            margin-top: 10px;
+            background: linear-gradient(90deg, #ea3a13, #f04823);
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 18px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* 模拟图3: 流水对账卡片 */
         .mock-flow-card {
-            background: #a93714;
+            background: var(--brand-orange);
             color: #fff;
             border-radius: 8px;
             padding: 12px 14px;
@@ -324,14 +433,14 @@
 
         .mock-flow-btn {
             background: #fff;
-            color: #a93714;
+            color: var(--brand-orange);
             font-size: 11px;
             font-weight: 800;
             padding: 4px 10px;
             border-radius: 14px;
         }
 
-        /* 步骤说明要点 */
+        /* 说明文字与警示 */
         .desc-p {
             font-size: 13px;
             color: #555;
@@ -343,24 +452,23 @@
         }
 
         .warning-text {
-            color: #d93026;
+            color: var(--warn-red);
             font-size: 12px;
-            background: #fdf2f2;
-            padding: 6px 10px;
+            background: var(--warn-bg);
+            padding: 8px 10px;
             border-radius: 6px;
             margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            font-weight: 600;
         }
 
-        /* 常驻扫码卡片（最稳入口） */
+        /* 常驻长按二维码卡片 */
         .bottom-qr-box {
             background: #fff;
             border-radius: 14px;
-            padding: 18px;
+            padding: 20px 14px;
             text-align: center;
-            border: 2px dashed #f04823;
+            border: 2px dashed #ea3a13;
+            margin-top: 6px;
         }
 
         .qr-img {
@@ -368,17 +476,18 @@
             height: 175px;
             display: block;
             margin: 10px auto;
-            border-radius: 8px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         }
 
         .qr-tip {
             display: inline-block;
             background: #fff0ed;
             color: var(--brand-red);
-            font-weight: 700;
-            font-size: 12.5px;
-            padding: 5px 14px;
-            border-radius: 16px;
+            font-weight: 800;
+            font-size: 13px;
+            padding: 6px 16px;
+            border-radius: 20px;
         }
 
         /* 底部固定条 */
@@ -426,7 +535,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             z-index: 2000;
             align-items: center;
             justify-content: center;
@@ -435,7 +544,7 @@
 
         .modal-box {
             background: #fff;
-            border-radius: 16px;
+            border-radius: 18px;
             padding: 22px 18px;
             text-align: center;
             width: 100%;
@@ -447,7 +556,7 @@
             position: absolute;
             top: 10px;
             right: 12px;
-            font-size: 20px;
+            font-size: 22px;
             color: #999;
             background: none;
             border: none;
@@ -461,18 +570,36 @@
     <div class="app-header">
         <div class="app-title">
             <span>校惠享·商户端</span>
-            <span class="app-badge">操作SOP</span>
+            <span class="app-badge">核销SOP</span>
         </div>
-        <div style="font-size: 12px; color: #777;">档口专用</div>
+        <div style="font-size: 12px; color: #777;">档口工作人员专用</div>
     </div>
 
     <div class="container">
 
-        <!-- 第1步：登录与授权 -->
+        <!-- ⚠️ 置顶重中之重：账号与手机号绑定须知 -->
+        <div class="important-alert-card">
+            <div class="alert-header">
+                <span>🛑</span>
+                <span>核心注意：手机号绑定原则（务必阅读）</span>
+            </div>
+            <div class="alert-content">
+                1. 档口在平台<strong>登记备案的手机号</strong>与微信端<strong>【一键授权】获取的手机号必须完全一致</strong>！<br>
+                2. 首次授权成功后，<span class="alert-highlight">切记不要随意切换微信、解绑或换绑手机号</span>！
+            </div>
+            <div class="alert-footer">
+                ⚠️
+                严重后果：若私自换绑或更换微信号，将直接导致<strong>【无法核销卡券】</strong>且<strong>【历史核销流水无法归属到最新账号】</strong>！如不慎误操作，请第一时间联系活动运营人员处理。
+            </div>
+        </div>
+
+        <!-- 步骤1：登录与授权 -->
         <div class="step-block">
             <div class="step-title-bar">
-                <span class="step-tag">步骤 1</span>
-                <span class="step-text">进入小程序与一键授权</span>
+                <div class="step-left">
+                    <span class="step-tag">步骤 1</span>
+                    <span class="step-text">进入小程序与一键授权</span>
+                </div>
             </div>
 
             <!-- 仿图1界面UI -->
@@ -490,49 +617,23 @@
                 </div>
             </div>
 
-            <p class="desc-p">1. 长按下方二维码或在聊天框进入小程序。</p>
-            <p class="desc-p">2. 首次进入在【个人中心】，点击右上角 <strong>【一键授权】</strong> 绑定手机号。</p>
+            <p class="desc-p">1. 长按下方二维码进入小程序。</p>
+            <p class="desc-p">2. 首次进入在【个人中心】，点击右上角 <strong>【一键授权】</strong>（使用登记手机号对应微信）。</p>
+            <!-- <p class="desc-p">3. 页面显示 <strong>“高校认证档口”</strong> 即代表档口绑定成功。</p> -->
         </div>
 
-        <!-- 第2步：完善店铺信息 -->
+        <!-- 步骤2：现场核销操作 -->
         <div class="step-block">
             <div class="step-title-bar">
-                <span class="step-tag">步骤 2</span>
-                <span class="step-text">上传门头与招牌菜（提升领券）</span>
-            </div>
-
-            <!-- 仿图4修改资料UI -->
-            <div class="ui-mock-box">
-                <div class="mock-shop-editor">
-                    <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px;">门店门头与实景风貌</div>
-                    <div class="mock-banner-img">
-                        <span>点击上传档口大图</span>
-                        <span class="mock-replace-tag">📷 更换门头照</span>
-                    </div>
-                    <div style="font-size: 12px; font-weight: 700; margin-top: 8px;">招牌商品展照 (0/4)</div>
-                    <div class="mock-goods-grid">
-                        <div class="mock-good-slot">➕<br>添加商品</div>
-                        <div class="mock-good-slot" style="opacity: 0.6;">➕<br>添加商品</div>
-                        <div class="mock-good-slot" style="opacity: 0.6;">➕<br>添加商品</div>
-                    </div>
+                <div class="step-left">
+                    <span class="step-tag">步骤 2</span>
+                    <span class="step-text">日常卡券核销（核心操作）</span>
                 </div>
-            </div>
-
-            <p class="desc-p">1. 在个人中心点击 <strong>【修改资料】</strong>。</p>
-            <p class="desc-p">2. 拍摄上传<strong>清晰的门头照片</strong>与 <strong>4张招牌热销菜品</strong>。</p>
-            <p class="desc-p">3. 点击底部 <strong>【确认保存并同步到领券大厅】</strong>，学生端领券页面将优先展示你的档口！</p>
-        </div>
-
-        <!-- 第3步：核销操作 -->
-        <div class="step-block">
-            <div class="step-title-bar">
-                <span class="step-tag">步骤 3</span>
-                <span class="step-text">日常核销（支持两种模式）</span>
             </div>
 
             <!-- 仿图2双模式核销UI -->
             <div class="ui-mock-box">
-                <div class="action-pointer" style="top: -6px; left: 24px;">日常点这个扫码 👇</div>
+                <div class="action-pointer" style="top: -6px; left: 24px;">日常扫码点这里 👇</div>
                 <div class="mock-verify-grid">
                     <div class="mock-scan-btn">
                         <div class="big-text">📷 扫一扫核销</div>
@@ -545,22 +646,26 @@
                 </div>
             </div>
 
-            <p class="desc-p">切换至底部 <strong>【工作台】</strong>：</p>
-            <p class="desc-p">👉 <strong>模式A（扫一扫）：</strong>点击橙色大按钮，扫学生出示的二维码。</p>
-            <p class="desc-p">👉 <strong>模式B（输码）：</strong>扫码异常时，点击绿色按钮输入 <strong>6位数字券码</strong>。</p>
-            <div class="warning-text">⚠️ “核销成功”后会有弹窗提示！</div>
+            <p class="desc-p">点击底部导航切换至 <strong>【工作台】</strong>：</p>
+            <p class="desc-p">👉 <strong>模式A（首选）：</strong>点击橙色 <strong>【扫一扫核销】</strong>，直接扫描顾客出示的二维码。</p>
+            <p class="desc-p">👉 <strong>模式B（备用）：</strong>遇屏幕受损或反光，点击 <strong>【输码核销】</strong> 手动输入
+                <strong>6位数字券码</strong>。
+            </p>
+            <div class="warning-text">⚠️ 【核销成功】后会有弹窗信息提示</div>
         </div>
 
-        <!-- 第4步：查单与对账 -->
+        <!-- 步骤3：查单与对账 -->
         <div class="step-block">
             <div class="step-title-bar">
-                <span class="step-tag">步骤 4</span>
-                <span class="step-text">核销流水与每日对账</span>
+                <div class="step-left">
+                    <span class="step-tag">步骤 3</span>
+                    <span class="step-text">核销流水与每日对账</span>
+                </div>
             </div>
 
             <!-- 仿图3核销流水卡片 -->
             <div class="ui-mock-box">
-                <div class="action-pointer" style="top: -6px; right: 18px;">点这里查对账 👇</div>
+                <div class="action-pointer" style="top: -6px; right: 18px;">点这里查流水 👇</div>
                 <div class="mock-flow-card">
                     <div>
                         <div class="title">📄 核销订单与对账流水</div>
@@ -570,32 +675,79 @@
                 </div>
             </div>
 
-            <p class="desc-p">进入【个人中心】点击 <strong>【查看明细】</strong>，可核对核销订单情况。</p>
+            <p class="desc-p">在【个人中心】点击 <strong>【查看明细】</strong>，随时核对当天核销总笔数</p>
         </div>
 
-        <!-- 页面底部长按进入小程序码 -->
+        <!-- 选填步骤：完善档口门面资料（保留完整图文） -->
+        <div class="step-block" style="border: 1px dashed #dcdfe6; background: #fafbfc;">
+            <div class="step-title-bar">
+                <div class="step-left">
+                    <span class="step-tag optional">选填步骤</span>
+                    <span class="step-text">修改完善店铺资料</span>
+                </div>
+                <span class="tag-notice">参加统一活动可忽略</span>
+            </div>
+
+            <!-- 仿图4修改店铺资料完整UI -->
+            <div class="ui-mock-box" style="background:#fff;">
+                <div class="mock-shop-editor">
+                    <div class="mock-editor-top">
+                        <span>门头与实景风貌</span>
+                        <span>建议尺寸 16:9</span>
+                    </div>
+                    <div class="mock-banner-preview">
+                        <span class="banner-tag-left">主视觉已生效</span>
+                        <div style="font-size:13px; font-weight:bold;">档口名称 · 门头实景</div>
+                        <span class="mock-change-btn">📷 更换门头照</span>
+                    </div>
+
+                    <div style="font-size: 11px; font-weight: 700; margin-top: 10px; color:#333;">招牌商品展照 (0/4)</div>
+                    <div class="mock-goods-grid">
+                        <div class="mock-slot">➕<br>添加商品</div>
+                        <div class="mock-slot" style="opacity: 0.5;">➕<br>添加商品</div>
+                        <div class="mock-slot" style="opacity: 0.5;">➕<br>添加商品</div>
+                        <div class="mock-slot" style="opacity: 0.5;">➕<br>添加商品</div>
+                    </div>
+
+                    <div class="mock-inputs-fake">
+                        <span>门店名称 / 宣传语填写</span>
+                        <span>✏️ 编辑</span>
+                    </div>
+
+                    <div class="mock-save-btn">
+                        🔄 确认保存并同步到领券大厅
+                    </div>
+                </div>
+            </div>
+
+            <p class="desc-p" style="color: #666; font-size: 12.5px;">
+                💡 <strong>操作指引（如需自主上传）：</strong><br>
+                在个人中心点击【修改资料】，上传清晰门店照、4个热销商品照及宣传语，点击保存即可在学生端领券大厅获得独立展示。
+            </p>
+        </div>
+
+        <!-- 常驻长按进入小程序码（使用本地 static/qrcode.png） -->
         <div class="bottom-qr-box">
-            <div style="font-size: 15px; font-weight: 800; color: #111;">长按识别进入档口助手</div>
-            <!-- 这里已放置二维码展示位，微信内长按即可识别 -->
-            <img src="./static/qrcode.png" class="qr-img" alt="小程序码">
-            <div class="qr-tip">👆 长按上方二维码秒进小程序 👆</div>
+            <div style="font-size: 15px; font-weight: 800; color: #111;">长按识别二维码 · 启动档口助手</div>
+            <img src="./static/qrcode.png" class="qr-img" alt="小程序核销码">
+            <div class="qr-tip">👆 长按上方二维码直接打开 👆</div>
         </div>
 
     </div>
 
-    <!-- 底部操作栏 -->
+    <!-- 底部常驻按钮 -->
     <div class="footer-action">
         <button class="btn-ghost" onclick="copyShortLink()">复制短链</button>
         <button class="btn-main" onclick="openQrModal()">长按打开小程序 ⚡</button>
     </div>
 
-    <!-- 弹窗 -->
+    <!-- 弹窗（使用本地 static/qrcode.png） -->
     <div class="modal-mask" id="qrModal" onclick="closeModal()">
         <div class="modal-box" onclick="event.stopPropagation()">
             <button class="close-icon" onclick="closeModal()">×</button>
-            <div style="font-size: 16px; font-weight: 800; margin-bottom: 4px;">进入校惠享小程序</div>
-            <img src="./static/qrcode.png" class="qr-img" style="margin: 8px auto;" alt="小程序码">
-            <div class="qr-tip">长按图片识别即可进入</div>
+            <div style="font-size: 16px; font-weight: 800; margin-bottom: 6px;">校惠享 · 档口助手</div>
+            <img src="./static/qrcode.png" class="qr-img" style="margin: 10px auto;" alt="小程序核销码">
+            <div class="qr-tip">长按上方二维码识别进入</div>
         </div>
     </div>
 
