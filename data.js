@@ -347,6 +347,88 @@ export default {
   }
 };
 <\/script>`
+            },
+            {
+                id: "phone-auth-mixin",
+                name: "phoneAuthMixin 微信手机号授权混入",
+                label: "手机号授权",
+                desc: "专用于微信小程序一键获取并安全存储手机号的公共 Mixin。内置 open-type='getPhoneNumber' 开放能力回调、用户拒绝拦截提示、向后端发送动态 code 换取真实手机号、本地持久化缓存（user_phone_number）以及成功向外派发事件。",
+                isGlobal: false,
+                importStatement: `import phoneAuthMixin from '@/utils/phoneAuthMixin.js';`,
+                props: [
+                    {
+                        name: "phoneNumber",
+                        type: "Data String",
+                        default: "''",
+                        desc: "已授权成功的手机号响应式变量，组件 created 阶段会自动尝试从本地缓存读取"
+                    },
+                    {
+                        name: "onGetPhoneNumber(e)",
+                        type: "Method (Event)",
+                        default: "-",
+                        desc: "【核心绑定】微信授权按钮 @getphonenumber 必须绑定的方法，内置拒绝授权拦截与 code 获取"
+                    },
+                    {
+                        name: "clearPhoneAuth()",
+                        type: "Method",
+                        default: "-",
+                        desc: "清空当前组件中的 phoneNumber 并移除本地缓存中的 'user_phone_number'"
+                    },
+                    {
+                        name: "initPhoneNumber()",
+                        type: "Method",
+                        default: "-",
+                        desc: "主动从本地缓存中重新读取并刷新 phoneNumber"
+                    }
+                ],
+                emits: [
+                    {
+                        name: "auth-success",
+                        args: "(phoneNumber: String)",
+                        desc: "向后端成功换取真实手机号后对外派发的通知事件，参数为解密后的完整手机号码"
+                    },
+                    {
+                        name: "update:show",
+                        args: "(show: Boolean = false)",
+                        desc: "授权成功后自动派发，常用于支持 :show.sync 语法糖自动关闭外层弹出的授权弹窗"
+                    }
+                ],
+                slots: [],
+                exampleCode: `<template>
+  <view class="auth-box">
+    <!-- 如果已拿到手机号，直接展示 -->
+    <view v-if="phoneNumber" class="phone-show">
+      已绑定手机：{{ phoneNumber }}
+    </view>
+
+    <!-- 微信官方授权按钮：必须携带 open-type 并绑定 Mixin 内置的 onGetPhoneNumber -->
+    <button 
+      v-else 
+      type="primary" 
+      open-type="getPhoneNumber" 
+      @getphonenumber="onGetPhoneNumber"
+    >
+      微信一键绑定手机号
+    </button>
+  </view>
+</template>
+
+<script>
+import phoneAuthMixin from '@/utils/phoneAuthMixin.js';
+
+export default {
+  // 1. 注册混入
+  mixins: [phoneAuthMixin],
+  methods: {
+    // 2. 如果在弹窗等子组件中使用，可监听其派发的成功事件
+    // @auth-success="handleAuthSuccess"
+    handleAuthSuccess(phone) {
+      console.log('获取到最新授权手机号：', phone);
+      // 继续下一步业务操作，例如刷新用户个人资料
+    }
+  }
+};
+<\/script>`
             }
         ]
     },
