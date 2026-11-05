@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineStream Pro - 本地视频播放器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide 图标库 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            cyan: '#00f0ff',
+                            dark: '#080b11',
+                            panel: '#0e1420',
+                            card: '#141c2e',
+                            border: '#1e293b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 细窄科技感滚动条 */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
+        }
+    </style>
+</head>
+
+<body class="h-full bg-brand-dark text-slate-200 font-sans select-none overflow-hidden">
+
+    <!-- ======================== 界面 1: 选择本地目录 ======================== -->
+    <div id="welcome-screen"
+        class="fixed inset-0 flex flex-col items-center justify-center p-6 z-50 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#111a2e] via-brand-dark to-black">
+        <!-- 顶部极简标题 -->
+        <div class="absolute top-6 left-8 flex items-center gap-2 text-xs tracking-wider text-slate-500 font-mono">
+            <i data-lucide="clapperboard" class="w-4 h-4 text-cyan-400"></i>
+            <span class="font-bold text-slate-300">CINESTREAM PRO</span>
+        </div>
+
+        <!-- 主面板 -->
+        <div
+            class="w-full max-w-xl bg-brand-panel/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl">
+            <div class="flex items-center gap-2 mb-3">
+                <span
+                    class="px-2 py-0.5 text-[10px] font-mono tracking-wider bg-cyan-950/70 border border-cyan-500/30 text-cyan-400 rounded">LOCAL
+                    LIBRARY</span>
+            </div>
+
+            <h1 class="text-xl font-bold text-white tracking-wide mb-1">选择本地视频目录</h1>
+            <p class="text-xs text-slate-400 mb-6">支持扫描并解析目录下的 MP4、MKV、WebM、MOV、AVI 等视频格式文件。</p>
+
+            <!-- 拖拽/点击区域 -->
+            <div id="drop-zone"
+                class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center justify-center transition-all bg-slate-900/40 hover:bg-slate-900/70 cursor-pointer">
+                <div
+                    class="w-14 h-14 rounded-full bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center mb-3 text-cyan-400">
+                    <i data-lucide="folder-open" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-sm font-medium text-slate-200 mb-1">将视频文件夹拖入此处</h3>
+                <p class="text-xs text-slate-500 mb-5">或使用下方按钮定位本地目录</p>
+
+                <div class="flex gap-3">
+                    <button onclick="folderInput.click()"
+                        class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs rounded-lg flex items-center gap-2 transition">
+                        <i data-lucide="folder" class="w-4 h-4"></i> 选择文件夹
+                    </button>
+                    <button onclick="fileInput.click()"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium text-xs rounded-lg flex items-center gap-2 transition">
+                        <i data-lucide="film" class="w-4 h-4"></i> 选择独立文件
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隐藏的文件输入组件 -->
+        <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
+        <input type="file" id="fileInput" accept="video/*" multiple class="hidden">
+    </div>
+
+    <!-- ======================== 界面 2: 一屏式工作台 ======================== -->
+    <div id="player-screen" class="hidden h-full flex flex-col bg-brand-dark overflow-hidden">
+
+        <!-- 顶部状态栏 -->
+        <header
+            class="h-11 border-b border-brand-border bg-brand-panel/80 px-4 flex items-center justify-between flex-shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="clapperboard" class="w-4 h-4 text-cyan-400"></i>
+                    <span class="font-bold text-xs tracking-wider text-white">CINESTREAM PRO</span>
+                </div>
+                <div class="h-3 w-px bg-slate-800"></div>
+                <div class="text-xs font-mono text-slate-400 truncate max-w-md" id="workspace-path">本地工作区</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="switchFolder()"
+                    class="px-2 py-1 text-xs text-slate-300 bg-slate-800/80 hover:bg-slate-700 hover:text-white rounded border border-slate-700 flex items-center gap-1.5 transition">
+                    <i data-lucide="arrow-left" class="w-3 h-3"></i> 返回重新选择
+                </button>
+            </div>
+        </header>
+
+        <!-- 主展示区：左侧满高播放器 + 右侧区域滚动列表 -->
+        <div class="flex-1 flex overflow-hidden">
+
+            <!-- 左侧：播放器 (完全填满高度与宽度，无留空) -->
+            <section
+                class="flex-1 h-full bg-black relative flex flex-col items-center justify-center overflow-hidden group">
+
+                <!-- 快捷键浮层提示 HUD (音量增减/快进退提示) -->
+                <div id="hud-toast"
+                    class="absolute z-30 pointer-events-none opacity-0 transition-opacity duration-200 flex items-center gap-2 px-4 py-2 rounded-lg bg-black/80 border border-slate-700 backdrop-blur-md text-sm font-mono text-cyan-400">
+                    <i id="hud-icon" data-lucide="volume-2" class="w-5 h-5"></i>
+                    <span id="hud-text">音量: 100%</span>
+                </div>
+
+                <!-- 视频标题浮层 -->
+                <div
+                    class="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded border border-white/10 opacity-0 group-hover:opacity-100 transition duration-300">
+                    <span id="status-indicator" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span id="playing-title"
+                        class="text-xs font-medium text-slate-200 tracking-wide max-w-xl truncate">未开始播放</span>
+                </div>
+
+                <!-- 原生视频节点 -->
+                <video id="video-player" class="w-full h-full object-contain cursor-pointer" playsinline></video>
+
+                <!-- 浮层控制栏 -->
+                <div
+                    class="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pb-4 pt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <!-- 进度条 -->
+                    <input type="range" id="progress-bar" value="0" min="0" max="100"
+                        class="w-full h-1.5 bg-slate-700 rounded appearance-none cursor-pointer accent-cyan-400 mb-3">
+
+                    <div class="flex items-center justify-between text-xs text-slate-300">
+                        <!-- 播放/暂停 & 时间 -->
+                        <div class="flex items-center gap-4">
+                            <button id="btn-play"
+                                class="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 flex items-center justify-center transition">
+                                <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                            </button>
+                            <div class="font-mono text-xs">
+                                <span id="current-time">00:00:00</span> / <span id="duration-time"
+                                    class="text-slate-500">00:00:00</span>
+                            </div>
+                        </div>
+
+                        <!-- 快捷键操作提示 -->
+                        <div class="hidden lg:flex items-center gap-4 text-[11px] text-slate-500 font-mono">
+                            <span>空格: 播放/暂停</span>
+                            <span>A/D 或 ←/→ : ±5秒</span>
+                            <span>W/S 或 ↑/↓ : ±10%音量</span>
+                        </div>
+
+                        <!-- 音量 & 全屏 -->
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2">
+                                <i id="volume-icon" data-lucide="volume-2" class="w-4 h-4 text-slate-400"></i>
+                                <input type="range" id="volume-bar" min="0" max="1" step="0.05" value="1"
+                                    class="w-16 h-1 bg-slate-700 rounded appearance-none accent-cyan-400 cursor-pointer">
+                            </div>
+                            <button id="btn-fullscreen" class="p-1 hover:text-cyan-400 transition">
+                                <i data-lucide="maximize" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：媒体列表 (独立区域滚动) -->
+            <aside class="w-80 lg:w-96 h-full flex flex-col bg-brand-panel border-l border-brand-border flex-shrink-0">
+
+                <!-- 搜索与计数 -->
+                <div class="p-3 border-b border-brand-border bg-brand-card/40 flex-shrink-0">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-300">视频列表</span>
+                        <span id="video-count"
+                            class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">0</span>
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500"></i>
+                        <input type="text" id="search-input" placeholder="搜索本地视频..."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-md pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <!-- 滚动列表主体 -->
+                <div id="video-list-container" class="flex-1 overflow-y-auto p-2 space-y-1.5">
+                    <!-- 动态注入项目 -->
+                </div>
+
+                <!-- 底部简单统计 -->
+                <div
+                    class="h-7 border-t border-brand-border bg-slate-950 px-3 flex items-center justify-between text-[10px] text-slate-500 flex-shrink-0 font-mono">
+                    <span id="total-size">0 MB</span>
+                    <span>READY</span>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        let playlist = [];
+        let currentVideoIndex = -1;
+        let toastTimeout = null;
+
+        // DOM 元素
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const playerScreen = document.getElementById('player-screen');
+        const folderInput = document.getElementById('folderInput');
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('drop-zone');
+        const videoListContainer = document.getElementById('video-list-container');
+        const videoPlayer = document.getElementById('video-player');
+        const playingTitle = document.getElementById('playing-title');
+        const statusIndicator = document.getElementById('status-indicator');
+        const videoCount = document.getElementById('video-count');
+        const workspacePath = document.getElementById('workspace-path');
+        const totalSizeEl = document.getElementById('total-size');
+        const searchInput = document.getElementById('search-input');
+
+        // 控制栏
+        const btnPlay = document.getElementById('btn-play');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationTimeEl = document.getElementById('duration-time');
+        const volumeBar = document.getElementById('volume-bar');
+        const volumeIcon = document.getElementById('volume-icon');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const hudToast = document.getElementById('hud-toast');
+        const hudIcon = document.getElementById('hud-icon');
+        const hudText = document.getElementById('hud-text');
+
+        // 拖拽支持
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-cyan-400'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-cyan-400'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-cyan-400');
+            if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
+        });
+
+        folderInput.addEventListener('change', (e) => processFiles(e.target.files));
+        fileInput.addEventListener('change', (e) => processFiles(e.target.files));
+
+        function switchFolder() {
+            videoPlayer.pause();
+            videoPlayer.src = '';
+            playerScreen.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+            playlist = [];
+        }
+
+        // 解析与装载文件
+        function processFiles(files) {
+            const validExtensions = ['.mp4', '.mkv', '.webm', '.mov', '.avi'];
+            playlist = Array.from(files).filter(file => {
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                return validExtensions.includes(ext) || file.type.startsWith('video/');
+            }).map((file, idx) => ({
+                id: idx,
+                file: file,
+                name: file.name,
+                size: formatBytes(file.size),
+                rawSize: file.size,
+                thumbnail: null
+            }));
+
+            if (playlist.length === 0) {
+                alert('该目录下未找到支持的视频文件！');
+                return;
+            }
+
+            // 设置显示路径
+            const samplePath = files[0].webkitRelativePath;
+            workspacePath.textContent = samplePath ? samplePath.split('/')[0] : '本地视频集';
+
+            // 统计容量
+            const totalBytes = playlist.reduce((sum, item) => sum + item.rawSize, 0);
+            totalSizeEl.textContent = `总计: ${formatBytes(totalBytes)}`;
+
+            welcomeScreen.classList.add('hidden');
+            playerScreen.classList.remove('hidden');
+            lucide.createIcons();
+
+            renderPlaylist(playlist);
+
+            // 【核心修改】只装载第一部视频元数据，不自动播放
+            loadVideo(0, false);
+
+            // 异步抓取前几帧作为缩略图
+            generateThumbnails();
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024, sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00:00";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
+        }
+
+        // 渲染右侧列表
+        function renderPlaylist(list) {
+            videoCount.textContent = `${list.length} 个项目`;
+            videoListContainer.innerHTML = '';
+
+            list.forEach((item) => {
+                const isCurrent = item.id === currentVideoIndex;
+                const card = document.createElement('div');
+                card.className = `flex items-center gap-2.5 p-2 rounded border cursor-pointer transition ${isCurrent
+                        ? 'bg-cyan-950/40 border-cyan-500/50'
+                        : 'bg-brand-card/40 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
+                    }`;
+
+                card.innerHTML = `
+          <div class="w-20 h-12 bg-slate-900 rounded overflow-hidden flex-shrink-0 relative border border-slate-800 flex items-center justify-center">
+            ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-cover">` : `<i data-lucide="film" class="w-4 h-4 text-slate-600"></i>`}
+            ${isCurrent ? '<div class="absolute inset-0 bg-cyan-500/20 flex items-center justify-center"><i data-lucide="play" class="w-3.5 h-3.5 text-cyan-400 fill-current"></i></div>' : ''}
+          </div>
+          <div class="flex-1 min-w-0">
+            <h4 class="text-xs ${isCurrent ? 'text-cyan-300 font-medium' : 'text-slate-300'} truncate" title="${item.name}">${item.name}</h4>
+            <div class="text-[10px] text-slate-500 font-mono mt-1">${item.size}</div>
+          </div>
+        `;
+
+                // 点击切换并立即播放
+                card.onclick = () => loadVideo(item.id, true);
+                videoListContainer.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        // 装载视频：autoPlay 控制是否直接播放
+        function loadVideo(index, autoPlay = false) {
+            if (index < 0 || index >= playlist.length) return;
+            currentVideoIndex = index;
+            const target = playlist[index];
+
+            if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+            videoPlayer.src = URL.createObjectURL(target.file);
+            playingTitle.textContent = target.name;
+
+            if (autoPlay) {
+                videoPlayer.play();
+                setPlayingUI(true);
+            } else {
+                videoPlayer.pause();
+                setPlayingUI(false);
+            }
+
+            renderPlaylist(filterPlaylist(searchInput.value));
+        }
+
+        function setPlayingUI(isPlaying) {
+            if (isPlaying) {
+                btnPlay.innerHTML = `<i data-lucide="pause" class="w-4 h-4 fill-current"></i>`;
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-pulse';
+            } else {
+                btnPlay.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i>`;
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-slate-500';
+            }
+            lucide.createIcons();
+        }
+
+        function togglePlay() {
+            if (videoPlayer.paused) {
+                videoPlayer.play();
+                setPlayingUI(true);
+            } else {
+                videoPlayer.pause();
+                setPlayingUI(false);
+            }
+        }
+
+        // 屏幕居中浮层提示 HUD
+        function showHUD(iconName, text) {
+            clearTimeout(toastTimeout);
+            hudIcon.setAttribute('data-lucide', iconName);
+            hudText.textContent = text;
+            lucide.createIcons();
+
+            hudToast.classList.remove('opacity-0');
+            toastTimeout = setTimeout(() => {
+                hudToast.classList.add('opacity-0');
+            }, 700);
+        }
+
+        // 调节音量 (步进 ±0.1)
+        function changeVolume(delta) {
+            let v = Math.round((videoPlayer.volume + delta) * 10) / 10;
+            v = Math.max(0, Math.min(1, v));
+            videoPlayer.volume = v;
+            volumeBar.value = v;
+            const percent = Math.round(v * 100);
+            showHUD(v === 0 ? 'volume-x' : 'volume-2', `音量: ${percent}%`);
+        }
+
+        // 快进快退 (步进 ±5秒)
+        function seekRelative(delta) {
+            if (isNaN(videoPlayer.duration)) return;
+            videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, videoPlayer.currentTime + delta));
+            showHUD(delta > 0 ? 'fast-forward' : 'rewind', `${delta > 0 ? '+5s' : '-5s'}`);
+        }
+
+        // ======================== 快捷键响应 ========================
+        window.addEventListener('keydown', (e) => {
+            // 避免在搜索框打字时误触
+            if (e.target === searchInput) return;
+
+            const key = e.key.toLowerCase();
+
+            // 空格：播放/暂停
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            }
+            // 快退 5秒: 方向左 或 A
+            else if (e.code === 'ArrowLeft' || key === 'a') {
+                e.preventDefault();
+                seekRelative(-5);
+            }
+            // 快进 5秒: 方向右 或 D
+            else if (e.code === 'ArrowRight' || key === 'd') {
+                e.preventDefault();
+                seekRelative(5);
+            }
+            // 音量增加 10%: 方向上 或 W
+            else if (e.code === 'ArrowUp' || key === 'w') {
+                e.preventDefault();
+                changeVolume(0.1);
+            }
+            // 音量减小 10%: 方向下 或 S
+            else if (e.code === 'ArrowDown' || key === 's') {
+                e.preventDefault();
+                changeVolume(-0.1);
+            }
+        });
+
+        // 基础事件监听
+        btnPlay.addEventListener('click', togglePlay);
+        videoPlayer.addEventListener('click', togglePlay);
+
+        videoPlayer.addEventListener('timeupdate', () => {
+            if (!isNaN(videoPlayer.duration)) {
+                progressBar.value = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+            }
+        });
+
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            durationTimeEl.textContent = formatTime(videoPlayer.duration);
+        });
+
+        videoPlayer.addEventListener('ended', () => {
+            if (currentVideoIndex + 1 < playlist.length) {
+                loadVideo(currentVideoIndex + 1, true);
+            } else {
+                setPlayingUI(false);
+            }
+        });
+
+        progressBar.addEventListener('input', (e) => {
+            videoPlayer.currentTime = (e.target.value / 100) * videoPlayer.duration;
+        });
+
+        volumeBar.addEventListener('input', (e) => {
+            videoPlayer.volume = e.target.value;
+        });
+
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                videoPlayer.parentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // 过滤列表
+        function filterPlaylist(keyword) {
+            if (!keyword.trim()) return playlist;
+            return playlist.filter(item => item.name.toLowerCase().includes(keyword.toLowerCase()));
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            renderPlaylist(filterPlaylist(e.target.value));
+        });
+
+        // 截帧生成真实缩略图
+        async function generateThumbnails() {
+            for (let item of playlist) {
+                try {
+                    const thumb = await captureVideoFrame(item.file);
+                    item.thumbnail = thumb;
+                    renderPlaylist(filterPlaylist(searchInput.value));
+                } catch (err) { }
+            }
+        }
+
+        function captureVideoFrame(file) {
+            return new Promise((resolve, reject) => {
+                const tempVideo = document.createElement('video');
+                tempVideo.src = URL.createObjectURL(file);
+                tempVideo.muted = true;
+                tempVideo.onloadeddata = () => { tempVideo.currentTime = 1; };
+                tempVideo.onseeked = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 160; canvas.height = 90;
+                    canvas.getContext('2d').drawImage(tempVideo, 0, 0, 160, 90);
+                    URL.revokeObjectURL(tempVideo.src);
+                    resolve(canvas.toDataURL('image/jpeg', 0.5));
+                };
+                tempVideo.onerror = () => { URL.revokeObjectURL(tempVideo.src); reject(); };
+            });
+        }
+    </script>
+</body>
+
+</html>
