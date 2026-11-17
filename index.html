@@ -2,190 +2,190 @@
 <html lang="zh-CN">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>前端公共资源文档库</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide 图标库 -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        /* 优化全局细滚动条 */
-        ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>前端公共资源文档库</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="./3.4.17.js"></script>
+  <!-- Lucide 图标库 -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* 优化全局细滚动条 */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
 
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
-        ::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
-            border-radius: 9999px;
-        }
+    ::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #cbd5e1;
-        }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
 
-        /* 页面切换平滑淡入动效 */
-        @keyframes pageFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
+    /* 页面切换平滑淡入动效 */
+    @keyframes pageFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-        .animate-page-enter {
-            animation: pageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-    </style>
+    .animate-page-enter {
+      animation: pageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
 </head>
 
 <body class="bg-[#f8fafc] text-slate-800 h-screen flex flex-col font-sans overflow-hidden">
 
-    <!-- ================= 顶部 Toast 提示组件 ================= -->
-    <div id="toast"
-        class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center space-x-2 bg-slate-900/90 backdrop-blur-md text-white text-xs px-4 py-2.5 rounded-full shadow-lg pointer-events-none opacity-0 -translate-y-4 transition-all duration-300">
-        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
-        <span id="toastMsg" class="font-medium tracking-wide">复制成功</span>
+  <!-- ================= 顶部 Toast 提示组件 ================= -->
+  <div id="toast"
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center space-x-2 bg-slate-900/90 backdrop-blur-md text-white text-xs px-4 py-2.5 rounded-full shadow-lg pointer-events-none opacity-0 -translate-y-4 transition-all duration-300">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMsg" class="font-medium tracking-wide">复制成功</span>
+  </div>
+
+  <!-- ================= 1. 顶部导航条 ================= -->
+  <header class="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between flex-shrink-0 z-20">
+    <!-- 左侧 Logo & 标题 -->
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goHome()">
+      <div
+        class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white shadow-sm shadow-indigo-200">
+        <i data-lucide="layers" class="w-4 h-4"></i>
+      </div>
+      <h1 class="text-base font-bold text-slate-900 tracking-tight">前端公共资源文档库</h1>
     </div>
 
-    <!-- ================= 1. 顶部导航条 ================= -->
-    <header class="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between flex-shrink-0 z-20">
-        <!-- 左侧 Logo & 标题 -->
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="goHome()">
-            <div
-                class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white shadow-sm shadow-indigo-200">
-                <i data-lucide="layers" class="w-4 h-4"></i>
-            </div>
-            <h1 class="text-base font-bold text-slate-900 tracking-tight">前端公共资源文档库</h1>
-        </div>
+    <!-- 右侧：搜索框 & 头像 -->
+    <div class="flex items-center space-x-4">
+      <div class="relative w-80">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input type="text" id="searchInput" placeholder="搜索组件、mixin、工具JS"
+          class="w-full pl-9 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs rounded-full border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition outline-none text-slate-600 placeholder-slate-400">
+        <i data-lucide="search"
+          class="w-3.5 h-3.5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      </div>
 
-        <!-- 右侧：搜索框 & 头像 -->
-        <div class="flex items-center space-x-4">
-            <div class="relative w-80">
-                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                <input type="text" id="searchInput" placeholder="搜索组件、mixin、工具JS"
-                    class="w-full pl-9 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs rounded-full border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition outline-none text-slate-600 placeholder-slate-400">
-                <i data-lucide="search"
-                    class="w-3.5 h-3.5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-            </div>
-
-            <div class="flex items-center">
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80"
-                    alt="Avatar" class="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-50">
-            </div>
-        </div>
-    </header>
-
-    <!-- ================= 主体区域 ================= -->
-    <div class="flex-1 flex overflow-hidden">
-
-        <!-- ================= 2. 左侧侧边栏 (已加宽到 w-80) ================= -->
-        <aside class="w-80 bg-white border-r border-slate-100 flex flex-col flex-shrink-0">
-            <nav id="menuContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
-                <!-- 侧边栏由 JS 动态生成 -->
-            </nav>
-        </aside>
-
-        <!-- ================= 3. 右侧公共展示区域 (自适应撑满，无宽度上限) ================= -->
-        <main class="flex-1 overflow-y-auto p-8 flex flex-col justify-between">
-            <div class="w-full">
-                <!-- 顶部二级 Tabs (支持高亮切换) -->
-                <div class="flex items-center space-x-2 mb-8" id="navTabs">
-                    <button onclick="goHome()" id="tab-home"
-                        class="px-4 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white shadow-sm shadow-indigo-200">
-                        首页
-                    </button>
-                    <button onclick="handleTabClick('Vue公共组件', 'tab-comp')" id="tab-comp"
-                        class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
-                        组件库
-                    </button>
-                    <button onclick="handleTabClick('Mixins混入', 'tab-mixin')" id="tab-mixin"
-                        class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
-                        Mixins混入
-                    </button>
-                    <button onclick="handleTabClick('工具JS', 'tab-util')" id="tab-util"
-                        class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
-                        工具JS
-                    </button>
-                    <button onclick="showAIRules()" id="tab-rules"
-                        class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
-                        AI协作规则
-                    </button>
-                </div>
-
-                <!-- 动态页面主容器 (带淡入动效) -->
-                <div id="contentView" class="w-full"></div>
-            </div>
-
-            <!-- 底部说明 -->
-            <footer class="mt-16 text-center text-xs text-slate-400">
-                文档数据维护在 <code class="text-slate-500 bg-slate-100 px-1 py-0.5 rounded">data.js</code>，已启用 AI 全参数结构化提取
-            </footer>
-        </main>
-
+      <div class="flex items-center">
+        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80"
+          alt="Avatar" class="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-50">
+      </div>
     </div>
+  </header>
 
-    <!-- 引入资产数据 -->
-    <script src="./data.js"></script>
+  <!-- ================= 主体区域 ================= -->
+  <div class="flex-1 flex overflow-hidden">
 
-    <!-- 逻辑控制器 -->
-    <script>
-        let currentActiveId = null;
-        let toastTimer = null;
+    <!-- ================= 2. 左侧侧边栏 (已加宽到 w-80) ================= -->
+    <aside class="w-80 bg-white border-r border-slate-100 flex flex-col flex-shrink-0">
+      <nav id="menuContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <!-- 侧边栏由 JS 动态生成 -->
+      </nav>
+    </aside>
 
-        function init() {
-            renderMenu();
-            goHome();
+    <!-- ================= 3. 右侧公共展示区域 (自适应撑满，无宽度上限) ================= -->
+    <main class="flex-1 overflow-y-auto p-8 flex flex-col justify-between">
+      <div class="w-full">
+        <!-- 顶部二级 Tabs (支持高亮切换) -->
+        <div class="flex items-center space-x-2 mb-8" id="navTabs">
+          <button onclick="goHome()" id="tab-home"
+            class="px-4 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white shadow-sm shadow-indigo-200">
+            首页
+          </button>
+          <button onclick="handleTabClick('Vue公共组件', 'tab-comp')" id="tab-comp"
+            class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
+            组件库
+          </button>
+          <button onclick="handleTabClick('Mixins混入', 'tab-mixin')" id="tab-mixin"
+            class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
+            Mixins混入
+          </button>
+          <button onclick="handleTabClick('工具JS', 'tab-util')" id="tab-util"
+            class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
+            工具JS
+          </button>
+          <button onclick="showAIRules()" id="tab-rules"
+            class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition">
+            AI协作规则
+          </button>
+        </div>
 
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                const kw = e.target.value.trim().toLowerCase();
-                renderMenu(kw);
-            });
-        }
+        <!-- 动态页面主容器 (带淡入动效) -->
+        <div id="contentView" class="w-full"></div>
+      </div>
 
-        // 轻量全局 Toast 提示
-        function showToast(msg = '复制成功') {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toastMsg');
-            toastMsg.innerText = msg;
+      <!-- 底部说明 -->
+      <footer class="mt-16 text-center text-xs text-slate-400">
+        文档数据维护在 <code class="text-slate-500 bg-slate-100 px-1 py-0.5 rounded">data.js</code>，已启用 AI 全参数结构化提取
+      </footer>
+    </main>
 
-            // 清除旧定时器
-            if (toastTimer) clearTimeout(toastTimer);
+  </div>
 
-            toast.classList.remove('opacity-0', '-translate-y-4');
-            toast.classList.add('opacity-100', 'translate-y-0');
+  <!-- 引入资产数据 -->
+  <script src="./data.js"></script>
 
-            toastTimer = setTimeout(() => {
-                toast.classList.remove('opacity-100', 'translate-y-0');
-                toast.classList.add('opacity-0', '-translate-y-4');
-            }, 1800);
-        }
+  <!-- 逻辑控制器 -->
+  <script>
+    let currentActiveId = null;
+    let toastTimer = null;
 
-        // 渲染左侧菜单
-        function renderMenu(keyword = '') {
-            const container = document.getElementById('menuContainer');
-            container.innerHTML = '';
+    function init() {
+      renderMenu();
+      goHome();
 
-            DOCS_DATA.forEach(group => {
-                const filtered = group.items.filter(item =>
-                    item.name.toLowerCase().includes(keyword) ||
-                    item.id.toLowerCase().includes(keyword) ||
-                    item.desc.toLowerCase().includes(keyword)
-                );
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        const kw = e.target.value.trim().toLowerCase();
+        renderMenu(kw);
+      });
+    }
 
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'space-y-1.5';
+    // 轻量全局 Toast 提示
+    function showToast(msg = '复制成功') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
 
-                groupDiv.innerHTML = `
+      // 清除旧定时器
+      if (toastTimer) clearTimeout(toastTimer);
+
+      toast.classList.remove('opacity-0', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-4');
+      }, 1800);
+    }
+
+    // 渲染左侧菜单
+    function renderMenu(keyword = '') {
+      const container = document.getElementById('menuContainer');
+      container.innerHTML = '';
+
+      DOCS_DATA.forEach(group => {
+        const filtered = group.items.filter(item =>
+          item.name.toLowerCase().includes(keyword) ||
+          item.id.toLowerCase().includes(keyword) ||
+          item.desc.toLowerCase().includes(keyword)
+        );
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'space-y-1.5';
+
+        groupDiv.innerHTML = `
           <div class="flex items-center justify-between text-xs font-medium text-slate-500 px-3 py-1 cursor-pointer hover:text-slate-800">
             <div class="flex items-center space-x-2">
               <i data-lucide="${group.icon}" class="w-4 h-4 text-slate-400"></i>
@@ -206,25 +206,25 @@
             `}
           </div>
         `;
-                container.appendChild(groupDiv);
-            });
+        container.appendChild(groupDiv);
+      });
 
-            lucide.createIcons();
-        }
+      lucide.createIcons();
+    }
 
-        // 渲染首页
-        function goHome() {
-            currentActiveId = null;
-            renderMenu();
-            updateTabStyle('tab-home');
+    // 渲染首页
+    function goHome() {
+      currentActiveId = null;
+      renderMenu();
+      updateTabStyle('tab-home');
 
-            const compCount = DOCS_DATA.find(g => g.category === 'Vue公共组件')?.items.length || 0;
-            const mixinCount = DOCS_DATA.find(g => g.category === 'Mixins混入')?.items.length || 0;
-            const utilCount = DOCS_DATA.find(g => g.category === '工具JS')?.items.length || 0;
+      const compCount = DOCS_DATA.find(g => g.category === 'Vue公共组件')?.items.length || 0;
+      const mixinCount = DOCS_DATA.find(g => g.category === 'Mixins混入')?.items.length || 0;
+      const utilCount = DOCS_DATA.find(g => g.category === '工具JS')?.items.length || 0;
 
-            const view = document.getElementById('contentView');
-            view.className = "w-full animate-page-enter";
-            view.innerHTML = `
+      const view = document.getElementById('contentView');
+      view.className = "w-full animate-page-enter";
+      view.innerHTML = `
         <div class="space-y-8 w-full">
           <div>
             <h2 class="text-2xl font-bold text-slate-900 tracking-tight">前端公共资源文档库</h2>
@@ -292,22 +292,22 @@
           </div>
         </div>
       `;
-            lucide.createIcons();
-        }
+      lucide.createIcons();
+    }
 
-        // 渲染分类概览卡片页（点击顶部 Tab 时）
-        function handleTabClick(categoryName, tabId) {
-            updateTabStyle(tabId);
-            currentActiveId = null;
-            renderMenu();
+    // 渲染分类概览卡片页（点击顶部 Tab 时）
+    function handleTabClick(categoryName, tabId) {
+      updateTabStyle(tabId);
+      currentActiveId = null;
+      renderMenu();
 
-            const group = DOCS_DATA.find(g => g.category === categoryName);
-            const items = group ? group.items : [];
+      const group = DOCS_DATA.find(g => g.category === categoryName);
+      const items = group ? group.items : [];
 
-            const view = document.getElementById('contentView');
-            view.className = "w-full animate-page-enter";
+      const view = document.getElementById('contentView');
+      view.className = "w-full animate-page-enter";
 
-            view.innerHTML = `
+      view.innerHTML = `
         <div class="w-full space-y-6">
           <div class="flex items-center justify-between">
             <div>
@@ -347,39 +347,39 @@
           `}
         </div>
       `;
-            lucide.createIcons();
+      lucide.createIcons();
+    }
+
+    // 渲染详情页
+    function showDetail(id) {
+      currentActiveId = id;
+      renderMenu();
+
+      let targetItem = null;
+      let targetCat = null;
+      for (const group of DOCS_DATA) {
+        const found = group.items.find(i => i.id === id);
+        if (found) {
+          targetItem = found;
+          targetCat = group.category;
+          break;
         }
+      }
+      if (!targetItem) return;
 
-        // 渲染详情页
-        function showDetail(id) {
-            currentActiveId = id;
-            renderMenu();
+      // 自动高亮对应所属的分类 Tab
+      if (targetCat === 'Vue公共组件') updateTabStyle('tab-comp');
+      else if (targetCat === 'Mixins混入') updateTabStyle('tab-mixin');
+      else if (targetCat === '工具JS') updateTabStyle('tab-util');
 
-            let targetItem = null;
-            let targetCat = null;
-            for (const group of DOCS_DATA) {
-                const found = group.items.find(i => i.id === id);
-                if (found) {
-                    targetItem = found;
-                    targetCat = group.category;
-                    break;
-                }
-            }
-            if (!targetItem) return;
+      const aiPromptText = generateAIPrompt(targetItem);
+      const propsList = targetItem.props || [];
+      const emitsList = targetItem.emits || [];
+      const slotsList = targetItem.slots || [];
 
-            // 自动高亮对应所属的分类 Tab
-            if (targetCat === 'Vue公共组件') updateTabStyle('tab-comp');
-            else if (targetCat === 'Mixins混入') updateTabStyle('tab-mixin');
-            else if (targetCat === '工具JS') updateTabStyle('tab-util');
-
-            const aiPromptText = generateAIPrompt(targetItem);
-            const propsList = targetItem.props || [];
-            const emitsList = targetItem.emits || [];
-            const slotsList = targetItem.slots || [];
-
-            const view = document.getElementById('contentView');
-            view.className = "w-full animate-page-enter";
-            view.innerHTML = `
+      const view = document.getElementById('contentView');
+      view.className = "w-full animate-page-enter";
+      view.innerHTML = `
         <div class="w-full space-y-6">
           <!-- 头部卡片 -->
           <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
@@ -506,18 +506,18 @@
           </div>
         </div>
       `;
-            lucide.createIcons();
-        }
+      lucide.createIcons();
+    }
 
-        // AI 规则页面
-        function showAIRules() {
-            updateTabStyle('tab-rules');
-            currentActiveId = null;
-            renderMenu();
+    // AI 规则页面
+    function showAIRules() {
+      updateTabStyle('tab-rules');
+      currentActiveId = null;
+      renderMenu();
 
-            const view = document.getElementById('contentView');
-            view.className = "w-full animate-page-enter";
-            view.innerHTML = `
+      const view = document.getElementById('contentView');
+      view.className = "w-full animate-page-enter";
+      view.innerHTML = `
         <div class="w-full bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
           <h2 class="text-lg font-bold text-slate-900">AI 协作开发规范要求</h2>
           <p class="text-xs text-slate-500 leading-relaxed">
@@ -532,74 +532,74 @@
           </div>
         </div>
       `;
-            lucide.createIcons();
+      lucide.createIcons();
+    }
+
+    // 更新 Tab 高亮激活样式
+    function updateTabStyle(activeTabId) {
+      ['tab-home', 'tab-comp', 'tab-mixin', 'tab-util', 'tab-rules'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          if (id === activeTabId) {
+            el.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white shadow-sm shadow-indigo-200";
+          } else {
+            el.className = "px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition";
+          }
         }
+      });
+    }
 
-        // 更新 Tab 高亮激活样式
-        function updateTabStyle(activeTabId) {
-            ['tab-home', 'tab-comp', 'tab-mixin', 'tab-util', 'tab-rules'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    if (id === activeTabId) {
-                        el.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white shadow-sm shadow-indigo-200";
-                    } else {
-                        el.className = "px-4 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white transition";
-                    }
-                }
-            });
-        }
+    // 生成 AI 完整提示词
+    function generateAIPrompt(item) {
+      let prompt = `【已有前端资产规范 - 严禁自行手写重复逻辑】\n`;
+      prompt += `资产名称：${item.name} ${item.tag ? `(模板标签: <${item.tag}>)` : ''}\n`;
+      prompt += `注册状态：${item.isGlobal ? '已全局挂载（禁止在当前页面重写或额外写 import）' : '按需引入'}\n`;
+      if (!item.isGlobal) prompt += `引入路径：${item.importStatement}\n`;
+      prompt += `功能说明：${item.desc}\n\n`;
 
-        // 生成 AI 完整提示词
-        function generateAIPrompt(item) {
-            let prompt = `【已有前端资产规范 - 严禁自行手写重复逻辑】\n`;
-            prompt += `资产名称：${item.name} ${item.tag ? `(模板标签: <${item.tag}>)` : ''}\n`;
-            prompt += `注册状态：${item.isGlobal ? '已全局挂载（禁止在当前页面重写或额外写 import）' : '按需引入'}\n`;
-            if (!item.isGlobal) prompt += `引入路径：${item.importStatement}\n`;
-            prompt += `功能说明：${item.desc}\n\n`;
+      if (item.props && item.props.length > 0) {
+        prompt += `【Props 传参规范】（请根据需求正确绑定属性，不要捏造不存在的参数）：\n`;
+        item.props.forEach(p => {
+          prompt += `- ${p.name} (${p.type}, 默认值: ${p.default || '无'}): ${p.desc}\n`;
+        });
+        prompt += `\n`;
+      }
 
-            if (item.props && item.props.length > 0) {
-                prompt += `【Props 传参规范】（请根据需求正确绑定属性，不要捏造不存在的参数）：\n`;
-                item.props.forEach(p => {
-                    prompt += `- ${p.name} (${p.type}, 默认值: ${p.default || '无'}): ${p.desc}\n`;
-                });
-                prompt += `\n`;
-            }
+      if (item.emits && item.emits.length > 0) {
+        prompt += `【Emits 事件/回调规范】：\n`;
+        item.emits.forEach(e => {
+          prompt += `- @${e.name} (参数: ${e.args || '无'}): ${e.desc}\n`;
+        });
+        prompt += `\n`;
+      }
 
-            if (item.emits && item.emits.length > 0) {
-                prompt += `【Emits 事件/回调规范】：\n`;
-                item.emits.forEach(e => {
-                    prompt += `- @${e.name} (参数: ${e.args || '无'}): ${e.desc}\n`;
-                });
-                prompt += `\n`;
-            }
+      if (item.slots && item.slots.length > 0) {
+        prompt += `【Slots 插槽】：\n`;
+        item.slots.forEach(s => {
+          prompt += `- #${s.name}: ${s.desc}\n`;
+        });
+        prompt += `\n`;
+      }
 
-            if (item.slots && item.slots.length > 0) {
-                prompt += `【Slots 插槽】：\n`;
-                item.slots.forEach(s => {
-                    prompt += `- #${s.name}: ${s.desc}\n`;
-                });
-                prompt += `\n`;
-            }
+      prompt += `【推荐调用示例】：\n${item.exampleCode}\n`;
+      return prompt;
+    }
 
-            prompt += `【推荐调用示例】：\n${item.exampleCode}\n`;
-            return prompt;
-        }
+    // 复制剪贴板并弹出 Toast
+    function copyToClipboard(encoded) {
+      navigator.clipboard.writeText(decodeURIComponent(encoded)).then(() => {
+        showToast('复制成功');
+      }).catch(() => {
+        showToast('复制失败，请重试');
+      });
+    }
 
-        // 复制剪贴板并弹出 Toast
-        function copyToClipboard(encoded) {
-            navigator.clipboard.writeText(decodeURIComponent(encoded)).then(() => {
-                showToast('复制成功');
-            }).catch(() => {
-                showToast('复制失败，请重试');
-            });
-        }
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
+    }
 
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
-        }
-
-        window.onload = init;
-    </script>
+    window.onload = init;
+  </script>
 </body>
 
 </html>
