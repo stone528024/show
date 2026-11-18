@@ -4,211 +4,631 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineStream Pro - 本地视频播放器</title>
+    <title>CINEMA NOIR · 私人本地放映室</title>
     <!-- Tailwind CSS -->
     <script src="./3.4.17.js"></script>
     <!-- Lucide 图标库 -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="./lucide.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            cyan: '#00f0ff',
-                            dark: '#080b11',
-                            panel: '#0e1420',
-                            card: '#141c2e',
-                            border: '#1e293b'
+                        noir: {
+                            bg: '#09090b',
+                            surface: '#111114',
+                            elevated: '#18181c',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            vermilion: '#ff4d29',
+                            amber: '#f5b041',
+                            cream: '#f4efe6',
+                            muted: '#8c8984'
                         }
+                    },
+                    fontFamily: {
+                        editorial: ['"Noto Serif SC"', 'Georgia', '"Songti SC"', 'serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
                     }
                 }
             }
         }
     </script>
     <style>
-        /* 细窄科技感滚动条 */
+        /* ======================== 全局胶片质感与滚动条 ======================== */
+        body {
+            background-color: #09090b;
+            color: #f4efe6;
+        }
+
+        /* 极细微的胶片颗粒噪点层 */
+        .film-grain {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+        }
+
         ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 4px;
+            height: 4px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #0b0f19;
+            background: transparent;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #1e293b;
-            border-radius: 4px;
+            background: rgba(244, 239, 230, 0.14);
+            border-radius: 99px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #00f0ff;
+            background: #ff4d29;
+        }
+
+        /* ======================== 胶片光圈与取景器动画 ======================== */
+        @keyframes slowSpin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .reel-spin {
+            animation: slowSpin 28s linear infinite;
+        }
+
+        .drop-active .reel-spin,
+        #drop-zone:hover .reel-spin {
+            animation-duration: 7s;
+        }
+
+        /* 进场错峰上浮 */
+        @keyframes revealUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .reveal-up {
+            opacity: 0;
+            animation: revealUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* 胶片齿孔装饰条 */
+        .film-sprockets {
+            background-image: repeating-linear-gradient(to right,
+                    transparent 0px,
+                    transparent 10px,
+                    rgba(244, 239, 230, 0.12) 10px,
+                    rgba(244, 239, 230, 0.12) 18px,
+                    transparent 18px,
+                    transparent 28px);
+            height: 6px;
+        }
+
+        /* ======================== 精准进度滑块（朱砂橙 -> 香槟金） ======================== */
+        input[type="range"].cinema-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"].cinema-slider::-webkit-slider-runnable-track {
+            height: 3px;
+            border-radius: 999px;
+            background: linear-gradient(to right,
+                    #ff4d29 0%,
+                    #f5b041 var(--progress, 0%),
+                    rgba(244, 239, 230, 0.18) var(--progress, 0%),
+                    rgba(244, 239, 230, 0.18) 100%);
+            transition: height 0.18s ease;
+        }
+
+        input[type="range"].cinema-slider:hover::-webkit-slider-runnable-track {
+            height: 5px;
+        }
+
+        input[type="range"].cinema-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f4efe6;
+            box-shadow: 0 0 0 2px #09090b, 0 0 12px rgba(255, 77, 41, 0.7);
+            margin-top: -4.5px;
+            transform: scale(0);
+            transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        input[type="range"].cinema-slider:hover::-webkit-slider-thumb,
+        input[type="range"].cinema-slider:active::-webkit-slider-thumb {
+            transform: scale(1);
+            margin-top: -3.5px;
+        }
+
+        /* 音量条拇指常显小圆点 */
+        input[type="range"].vol-slider::-webkit-slider-thumb {
+            transform: scale(0.85);
+            margin-top: -4.5px;
+        }
+
+        /* 播放中跳动律动点 */
+        @keyframes pulseBar {
+
+            0%,
+            100% {
+                transform: scaleY(0.35);
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: scaleY(1);
+                opacity: 1;
+            }
+        }
+
+        .meter-bar {
+            width: 2.5px;
+            height: 12px;
+            background: #ff4d29;
+            border-radius: 99px;
+            transform-origin: bottom;
+            animation: pulseBar 0.8s ease-in-out infinite;
+        }
+
+        .meter-bar:nth-child(2) {
+            animation-delay: 0.2s;
+            background: #f5b041;
+        }
+
+        .meter-bar:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        .meter-paused .meter-bar {
+            animation-play-state: paused;
+            transform: scaleY(0.3);
+        }
+
+        /* 列表卡片入场 */
+        @keyframes itemEnter {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .list-item-anim {
+            animation: itemEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+
+        /* 空闲隐退模式 */
+        .stage-idle {
+            cursor: none;
+        }
+
+        .stage-idle .hud-chrome {
+            opacity: 0 !important;
+            transform: translateY(8px);
+            pointer-events: none;
+        }
+
+        .stage-idle .top-chrome {
+            opacity: 0 !important;
+            transform: translateY(-8px);
+            pointer-events: none;
+        }
+
+        /* 弹性提示气泡 */
+        .hud-pop {
+            opacity: 1 !important;
+            transform: translate(-50%, -50%) scale(1) !important;
         }
     </style>
 </head>
 
-<body class="h-full bg-brand-dark text-slate-200 font-sans select-none overflow-hidden">
-    <!-- ======================== 界面 1: 选择本地目录 ======================== -->
+<body class="h-full bg-noir-bg text-noir-cream font-sans select-none overflow-hidden antialiased relative">
+    <!-- 全局胶片噪点纹理 -->
+    <div class="film-grain pointer-events-none fixed inset-0 z-[100]"></div>
+
+    <!-- ======================== 界面 1: 非对称编辑风欢迎页 ======================== -->
     <div id="welcome-screen"
-        class="fixed inset-0 flex flex-col items-center justify-center p-6 z-50 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#111a2e] via-brand-dark to-black">
-        <!-- 顶部极简标题 -->
-        <div class="absolute top-6 left-8 flex items-center gap-2 text-xs tracking-wider text-slate-500 font-mono">
-            <i data-lucide="clapperboard" class="w-4 h-4 text-cyan-400"></i>
-            <span class="font-bold text-slate-300">CINESTREAM PRO</span>
+        class="fixed inset-0 z-50 flex flex-col justify-between bg-noir-bg transition-all duration-700 ease-out overflow-y-auto">
+
+        <!-- 暖调胶片氛围暗光 -->
+        <div class="pointer-events-none fixed inset-0 overflow-hidden">
+            <div
+                class="absolute -top-40 right-[-10%] w-[620px] h-[620px] rounded-full bg-noir-vermilion/[0.08] blur-[150px]">
+            </div>
+            <div
+                class="absolute -bottom-40 left-[-10%] w-[520px] h-[520px] rounded-full bg-noir-amber/[0.07] blur-[150px]">
+            </div>
         </div>
-        <!-- 主面板 -->
-        <div
-            class="w-full max-w-xl bg-brand-panel/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl">
-            <div class="flex items-center gap-2 mb-3">
+
+        <!-- 顶部瑞士网格导航栏 -->
+        <header
+            class="relative z-10 w-full border-b border-noir-border px-6 lg:px-12 h-14 flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <span class="w-2.5 h-2.5 rounded-full bg-noir-vermilion shadow-[0_0_10px_#ff4d29]"></span>
+                <span class="font-mono text-xs tracking-[0.22em] uppercase text-noir-cream font-semibold">Cinema
+                    Noir</span>
                 <span
-                    class="px-2 py-0.5 text-[10px] font-mono tracking-wider bg-cyan-950/70 border border-cyan-500/30 text-cyan-400 rounded">LOCAL
-                    LIBRARY</span>
+                    class="hidden sm:inline-block text-[10px] font-mono text-noir-muted border border-noir-border px-2 py-0.5 rounded-full">REV
+                    2.0</span>
             </div>
-            <h1 class="text-xl font-bold text-white tracking-wide mb-1">选择本地视频目录</h1>
-            <p class="text-xs text-slate-400 mb-2">支持扫描并解析目录下的 MP4、MKV、WebM、MOV、AVI 等视频格式文件。</p>
-            <!-- === 修改：增加安全提示文字 === -->
-            <p class="text-[11px] text-amber-400/80 mb-6">⚠️ 共用电脑建议使用<strong>无痕窗口</strong>打开，防止浏览器记住你的视频目录路径</p>
-            <!-- 拖拽/点击区域 -->
-            <div id="drop-zone"
-                class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center justify-center transition-all bg-slate-900/40 hover:bg-slate-900/70 cursor-pointer">
-                <div
-                    class="w-14 h-14 rounded-full bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center mb-3 text-cyan-400">
-                    <i data-lucide="folder-open" class="w-7 h-7"></i>
+
+            <!-- 隐私警示铭牌 -->
+            <div
+                class="flex items-center gap-2 text-[11px] text-noir-amber/90 bg-noir-amber/[0.07] border border-noir-amber/20 px-3 py-1 rounded-full">
+                <i data-lucide="eye-off" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                <span class="hidden md:inline">共用设备建议使用 <strong>无痕窗口</strong> 打开，避免记录目录路径</span>
+                <span class="md:hidden">建议使用无痕窗口</span>
+            </div>
+        </header>
+
+        <!-- 主视觉：非对称双栏陈列 -->
+        <main
+            class="relative z-10 flex-1 max-w-6xl w-full mx-auto px-6 lg:px-12 py-8 lg:py-12 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+
+            <!-- 左侧：大字排版 + 胶片档案规格表 -->
+            <div class="lg:col-span-6 flex flex-col justify-center">
+                <div class="reveal-up flex items-center gap-3 mb-5" style="animation-delay: 50ms;">
+                    <span class="h-px w-8 bg-noir-vermilion"></span>
+                    <span class="font-mono text-[11px] tracking-[0.25em] uppercase text-noir-vermilion">Private
+                        Screening Room</span>
                 </div>
-                <h3 class="text-sm font-medium text-slate-200 mb-1">将视频文件夹拖入此处</h3>
-                <p class="text-xs text-slate-500 mb-5">或使用下方按钮定位本地目录</p>
-                <div class="flex gap-3">
-                    <!-- === 修改：绑定新函数 openDirectoryPicker，优先调用showDirectoryPicker === -->
-                    <button onclick="openDirectoryPicker()"
-                        class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs rounded-lg flex items-center gap-2 transition">
-                        <i data-lucide="folder" class="w-4 h-4"></i> 选择文件夹
-                    </button>
-                    <button onclick="fileInput.click()"
-                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium text-xs rounded-lg flex items-center gap-2 transition">
-                        <i data-lucide="film" class="w-4 h-4"></i> 选择独立文件
-                    </button>
+
+                <h1 class="reveal-up font-editorial text-4xl sm:text-5xl lg:text-[54px] font-bold leading-[1.12] tracking-tight text-noir-cream mb-5"
+                    style="animation-delay: 120ms;">
+                    把本地硬盘，<br>
+                    变成你的<span class="italic font-normal text-noir-amber">私人放映厅</span>。
+                </h1>
+
+                <p class="reveal-up text-sm text-noir-muted leading-relaxed max-w-md mb-8"
+                    style="animation-delay: 190ms;">
+                    无需转码上传，直接调用浏览器底层硬件解码本地影片。配有实时画面流光氛围灯、自动封帧预览与影院级快捷键。
+                </p>
+
+                <!-- 瑞士极简 3 栏规格表 -->
+                <div class="reveal-up grid grid-cols-3 border-t border-b border-noir-border divide-x divide-noir-border"
+                    style="animation-delay: 260ms;">
+                    <div class="py-4 pr-3">
+                        <div class="font-mono text-[10px] text-noir-muted mb-1">01 / PRIVACY</div>
+                        <div class="text-xs font-medium text-noir-cream">纯本地零上传</div>
+                    </div>
+                    <div class="py-4 px-3">
+                        <div class="font-mono text-[10px] text-noir-muted mb-1">02 / AMBILIGHT</div>
+                        <div class="text-xs font-medium text-noir-cream">实时画面流光</div>
+                    </div>
+                    <div class="py-4 pl-3">
+                        <div class="font-mono text-[10px] text-noir-muted mb-1">03 / FORMATS</div>
+                        <div class="text-xs font-medium text-noir-cream font-mono">MP4·MKV·MOV</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <!-- 隐藏的文件输入组件 -->
+
+            <!-- 右侧：取景器交互装载台 -->
+            <div class="lg:col-span-6 reveal-up" style="animation-delay: 220ms;">
+                <div id="drop-zone"
+                    class="group relative rounded-2xl bg-noir-surface/90 border border-noir-border hover:border-noir-vermilion/50 p-7 sm:p-10 transition-all duration-500 shadow-[0_35px_100px_-20px_rgba(0,0,0,0.9)] overflow-hidden">
+
+                    <!-- 顶部胶片齿孔装饰 -->
+                    <div class="film-sprockets opacity-40 mb-7 -mx-7 sm:-mx-10"></div>
+
+                    <!-- 取景器四角括号 (hover / drag 时向内合焦) -->
+                    <div class="relative py-8 px-4 flex flex-col items-center text-center">
+                        <span
+                            class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-noir-cream/25 group-hover:border-noir-vermilion group-hover:translate-x-1.5 group-hover:translate-y-1.5 transition-all duration-300"></span>
+                        <span
+                            class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-noir-cream/25 group-hover:border-noir-vermilion group-hover:-translate-x-1.5 group-hover:translate-y-1.5 transition-all duration-300"></span>
+                        <span
+                            class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-noir-cream/25 group-hover:border-noir-vermilion group-hover:translate-x-1.5 group-hover:-translate-y-1.5 transition-all duration-300"></span>
+                        <span
+                            class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-noir-cream/25 group-hover:border-noir-vermilion group-hover:-translate-x-1.5 group-hover:-translate-y-1.5 transition-all duration-300"></span>
+
+                        <!-- 旋转胶片盘 SVG -->
+                        <div class="relative w-20 h-20 mb-5 flex items-center justify-center">
+                            <svg class="reel-spin w-20 h-20 text-noir-cream/20 group-hover:text-noir-vermilion/70 transition-colors duration-500"
+                                viewBox="0 0 100 100" fill="none">
+                                <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="1.2"
+                                    stroke-dasharray="6 4" />
+                                <circle cx="50" cy="50" r="34" stroke="currentColor" stroke-width="1" />
+                                <circle cx="50" cy="24" r="5" stroke="currentColor" stroke-width="1.2" />
+                                <circle cx="72.5" cy="37" r="5" stroke="currentColor" stroke-width="1.2" />
+                                <circle cx="72.5" cy="63" r="5" stroke="currentColor" stroke-width="1.2" />
+                                <circle cx="50" cy="76" r="5" stroke="currentColor" stroke-width="1.2" />
+                                <circle cx="27.5" cy="63" r="5" stroke="currentColor" stroke-width="1.2" />
+                                <circle cx="27.5" cy="37" r="5" stroke="currentColor" stroke-width="1.2" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <i data-lucide="film"
+                                    class="w-6 h-6 text-noir-cream group-hover:text-noir-vermilion transition-colors"></i>
+                            </div>
+                        </div>
+
+                        <h2 class="text-base sm:text-lg font-medium text-noir-cream mb-1.5">
+                            拖入视频文件夹，开始放映
+                        </h2>
+                        <p class="text-xs text-noir-muted mb-7 font-mono">
+                            DROP DIRECTORY HERE OR SELECT BELOW
+                        </p>
+
+                        <!-- 实体触感按钮组 -->
+                        <div class="flex flex-wrap items-center justify-center gap-3 w-full">
+                            <button type="button" onclick="openDirectoryPicker()"
+                                class="px-6 py-3 rounded-full bg-noir-vermilion hover:bg-[#ff6242] text-white font-semibold text-xs tracking-wide flex items-center gap-2 shadow-[0_8px_28px_-4px_rgba(255,77,41,0.55)] transition-all duration-200 hover:-translate-y-0.5 active:scale-95">
+                                <i data-lucide="folder-open" class="w-4 h-4"></i>
+                                <span>选择影片目录</span>
+                            </button>
+                            <button type="button" onclick="fileInput.click()"
+                                class="px-5 py-3 rounded-full bg-noir-elevated hover:bg-white/10 border border-noir-border text-noir-cream font-medium text-xs flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-95">
+                                <i data-lucide="file-video" class="w-4 h-4 text-noir-amber"></i>
+                                <span>挑选单个文件</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 底部胶片齿孔装饰 -->
+                    <div class="film-sprockets opacity-40 mt-7 -mx-7 sm:-mx-10"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部极简操作指南 -->
+        <footer
+            class="relative z-10 border-t border-noir-border px-6 lg:px-12 h-11 flex items-center justify-between text-[11px] font-mono text-noir-muted flex-shrink-0">
+            <span>LOCAL HARDWARE DECODING</span>
+            <div class="hidden sm:flex items-center gap-5">
+                <span>[SPACE] 播放/暂停</span>
+                <span>[A / D] ±5秒</span>
+                <span>[W / S] 音量</span>
+                <span>[F] 全屏</span>
+            </div>
+        </footer>
+
+        <!-- 隐藏的文件输入 -->
         <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
         <input type="file" id="fileInput" accept="video/*" multiple class="hidden">
     </div>
-    <!-- ======================== 界面 2: 一屏式工作台 ======================== -->
-    <div id="player-screen" class="hidden h-full flex flex-col bg-brand-dark overflow-hidden">
-        <!-- 顶部状态栏 -->
+
+    <!-- ======================== 界面 2: 沉浸式影院工作台 ======================== -->
+    <div id="player-screen"
+        class="hidden opacity-0 h-full flex flex-col bg-noir-bg overflow-hidden transition-opacity duration-500">
+
+        <!-- 顶部极简放映室顶栏 -->
         <header
-            class="h-11 border-b border-brand-border bg-brand-panel/80 px-4 flex items-center justify-between flex-shrink-0 z-20">
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="clapperboard" class="w-4 h-4 text-cyan-400"></i>
-                    <span class="font-bold text-xs tracking-wider text-white">CINESTREAM PRO</span>
+            class="h-12 border-b border-noir-border bg-noir-surface/90 backdrop-blur-xl px-4 lg:px-6 flex items-center justify-between flex-shrink-0 z-30">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="w-2 h-2 rounded-full bg-noir-vermilion"></span>
+                    <span
+                        class="font-mono text-[11px] tracking-[0.2em] uppercase font-bold text-noir-cream hidden sm:inline">Cinema
+                        Noir</span>
                 </div>
-                <div class="h-3 w-px bg-slate-800"></div>
-                <div class="text-xs font-mono text-slate-400 truncate max-w-md" id="workspace-path">本地工作区</div>
+
+                <span class="text-noir-border hidden sm:inline">/</span>
+
+                <div
+                    class="flex items-center gap-2 text-xs font-mono text-noir-muted truncate max-w-[200px] sm:max-w-md">
+                    <i data-lucide="folder" class="w-3.5 h-3.5 text-noir-amber flex-shrink-0"></i>
+                    <span id="workspace-path" class="truncate text-noir-cream/85">本地放映库</span>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- 实时环境流光开关 -->
+                <button id="btn-ambilight" onclick="toggleAmbilight()" title="实时画面环境流光"
+                    class="px-3 py-1.5 rounded-full text-[11px] font-mono border border-noir-amber/40 bg-noir-amber/10 text-noir-amber flex items-center gap-1.5 transition-all active:scale-95">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">流光 ON</span>
+                </button>
+
+                <!-- 影院模式/折叠片单 -->
+                <button id="btn-toggle-sidebar" onclick="toggleSidebar()" title="展开/收起片单 (影院模式)"
+                    class="px-3 py-1.5 rounded-full text-[11px] font-mono bg-noir-elevated hover:bg-white/10 border border-noir-border text-noir-cream flex items-center gap-1.5 transition-all active:scale-95">
+                    <i data-lucide="panel-right" class="w-3.5 h-3.5 text-noir-muted"></i>
+                    <span class="hidden sm:inline">片单</span>
+                </button>
+
+                <!-- 更换目录 -->
                 <button onclick="switchFolder()"
-                    class="px-2 py-1 text-xs text-slate-300 bg-slate-800/80 hover:bg-slate-700 hover:text-white rounded border border-slate-700 flex items-center gap-1.5 transition">
-                    <i data-lucide="arrow-left" class="w-3 h-3"></i> 返回重新选择
+                    class="px-3 py-1.5 rounded-full text-[11px] font-mono bg-noir-elevated hover:bg-noir-vermilion hover:border-noir-vermilion border border-noir-border text-noir-cream flex items-center gap-1.5 transition-all active:scale-95">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>换片库</span>
                 </button>
             </div>
         </header>
-        <!-- 主展示区：左侧满高播放器 + 右侧区域滚动列表 -->
-        <div class="flex-1 flex overflow-hidden">
-            <!-- 左侧：播放器 (完全填满高度与宽度，无留空) -->
-            <section
-                class="flex-1 h-full bg-black relative flex flex-col items-center justify-center overflow-hidden group">
-                <!-- 快捷键浮层提示 HUD (音量增减/快进退提示) -->
-                <div id="hud-toast"
-                    class="absolute z-30 pointer-events-none opacity-0 transition-opacity duration-200 flex items-center gap-2 px-4 py-2 rounded-lg bg-black/80 border border-slate-700 backdrop-blur-md text-sm font-mono text-cyan-400">
-                    <i id="hud-icon" data-lucide="volume-2" class="w-5 h-5"></i>
-                    <span id="hud-text">音量: 100%</span>
-                </div>
-                <!-- 视频标题浮层 -->
+
+        <!-- 主体区：放映舞台 + 右侧片单抽屉 -->
+        <div class="flex-1 flex overflow-hidden relative">
+
+            <!-- 左侧：放映舞台 -->
+            <section id="player-stage"
+                class="flex-1 h-full bg-[#040405] relative flex items-center justify-center overflow-hidden">
+
+                <!-- 实时画面环境流光画布 (Ambilight Canvas) -->
+                <canvas id="ambilight-canvas" width="32" height="18"
+                    class="pointer-events-none absolute inset-0 w-full h-full object-cover blur-[110px] saturate-[1.8] opacity-55 scale-110 transition-opacity duration-700 z-0"></canvas>
+
+                <!-- 柔和暗角遮罩 -->
                 <div
-                    class="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded border border-white/10 opacity-0 group-hover:opacity-100 transition duration-300">
-                    <span id="status-indicator" class="w-2 h-2 rounded-full bg-slate-500"></span>
-                    <span id="playing-title"
-                        class="text-xs font-medium text-slate-200 tracking-wide max-w-xl truncate">未开始播放</span>
+                    class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(4,4,5,0.85)_100%)] z-10">
                 </div>
-                <!-- 原生视频节点 -->
-                <video id="video-player" class="w-full h-full object-contain cursor-pointer" playsinline></video>
-                <!-- 浮层控制栏 -->
+
+                <!-- 顶部浮层：当前片名与状态 -->
                 <div
-                    class="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pb-4 pt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <!-- 进度条 -->
-                    <input type="range" id="progress-bar" value="0" min="0" max="100"
-                        class="w-full h-1.5 bg-slate-700 rounded appearance-none cursor-pointer accent-cyan-400 mb-3">
-                    <div class="flex items-center justify-between text-xs text-slate-300">
-                        <!-- 播放/暂停 & 时间 -->
-                        <div class="flex items-center gap-4">
-                            <button id="btn-play"
-                                class="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 flex items-center justify-center transition">
-                                <i data-lucide="play" class="w-4 h-4 fill-current"></i>
-                            </button>
-                            <div class="font-mono text-xs">
-                                <span id="current-time">00:00:00</span> / <span id="duration-time"
-                                    class="text-slate-500">00:00:00</span>
+                    class="top-chrome absolute top-5 left-5 right-5 z-20 flex items-center justify-between pointer-events-none transition-all duration-300">
+                    <div
+                        class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-noir-bg/75 backdrop-blur-xl border border-noir-border shadow-xl max-w-2xl">
+                        <span id="status-indicator" class="w-2 h-2 rounded-full bg-noir-muted flex-shrink-0"></span>
+                        <span id="playing-title"
+                            class="text-xs font-medium text-noir-cream tracking-wide truncate">等待放映</span>
+                    </div>
+                </div>
+
+                <!-- 快捷键居中弹性 HUD -->
+                <div id="hud-toast" style="transform: translate(-50%, -50%) scale(0.82);"
+                    class="absolute top-1/2 left-1/2 z-40 pointer-events-none opacity-0 transition-all duration-200 flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-noir-surface/90 border border-white/15 backdrop-blur-2xl shadow-[0_15px_50px_rgba(0,0,0,0.8)] text-xs font-mono text-noir-cream">
+                    <span id="hud-icon-wrap" class="flex items-center text-noir-vermilion"></span>
+                    <span id="hud-text" class="tracking-wider font-semibold">音量 100%</span>
+                </div>
+
+                <!-- 暂停状态：居中极简播放按钮 -->
+                <button id="center-play-btn" onclick="togglePlay()"
+                    class="absolute z-20 w-18 h-18 p-5 rounded-full bg-noir-bg/65 hover:bg-noir-vermilion text-noir-cream border border-white/20 hover:border-noir-vermilion backdrop-blur-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.8)] transition-all duration-300 hover:scale-110 active:scale-95">
+                    <i data-lucide="play" class="w-7 h-7 fill-current ml-0.5"></i>
+                </button>
+
+                <!-- 视频核心节点 -->
+                <video id="video-player" class="relative z-10 w-full h-full object-contain cursor-pointer"
+                    playsinline></video>
+
+                <!-- 底部极简悬浮控制坞 -->
+                <div class="hud-chrome absolute bottom-5 left-5 right-5 z-30 transition-all duration-300">
+                    <div
+                        class="max-w-5xl mx-auto bg-noir-surface/80 backdrop-blur-2xl border border-white/10 rounded-2xl px-4 sm:px-5 pt-3 pb-3.5 shadow-[0_24px_60px_rgba(0,0,0,0.85)]">
+
+                        <!-- 进度条与时间预览气泡 -->
+                        <div class="relative flex items-center mb-3">
+                            <div id="progress-tooltip"
+                                class="hidden absolute -top-9 -translate-x-1/2 px-2.5 py-1 rounded-md bg-noir-bg border border-white/15 text-[10px] font-mono text-noir-amber pointer-events-none shadow-lg">
+                                00:00:00
                             </div>
+                            <input type="range" id="progress-bar" value="0" min="0" max="100" step="0.1"
+                                class="cinema-slider w-full">
                         </div>
-                        <!-- 快捷键操作提示 -->
-                        <div class="hidden lg:flex items-center gap-4 text-[11px] text-slate-500 font-mono">
-                            <span>空格: 播放/暂停</span>
-                            <span>A/D 或 ←/→ : ±5秒</span>
-                            <span>W/S 或 ↑/↓ : ±10%音量</span>
-                        </div>
-                        <!-- 音量 & 全屏 -->
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center gap-2">
-                                <i id="volume-icon" data-lucide="volume-2" class="w-4 h-4 text-slate-400"></i>
-                                <input type="range" id="volume-bar" min="0" max="1" step="0.05" value="1"
-                                    class="w-16 h-1 bg-slate-700 rounded appearance-none accent-cyan-400 cursor-pointer">
+
+                        <div class="flex items-center justify-between gap-3">
+                            <!-- 左区：上下集 / 播放 / 时间码 -->
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <button onclick="playAdjacent(-1)" title="上一部"
+                                    class="p-1.5 rounded-full text-noir-muted hover:text-noir-cream hover:bg-white/5 transition active:scale-90">
+                                    <i data-lucide="skip-back" class="w-4 h-4"></i>
+                                </button>
+
+                                <button id="btn-play"
+                                    class="w-9 h-9 rounded-full bg-noir-vermilion hover:bg-[#ff6242] text-white flex items-center justify-center shadow-lg shadow-noir-vermilion/30 transition-all hover:scale-105 active:scale-95">
+                                </button>
+
+                                <button onclick="playAdjacent(1)" title="下一部"
+                                    class="p-1.5 rounded-full text-noir-muted hover:text-noir-cream hover:bg-white/5 transition active:scale-90">
+                                    <i data-lucide="skip-forward" class="w-4 h-4"></i>
+                                </button>
+
+                                <div class="font-mono text-[11px] pl-1 flex items-center gap-1.5">
+                                    <span id="current-time" class="text-noir-cream">00:00:00</span>
+                                    <span class="text-noir-muted">/</span>
+                                    <span id="duration-time" class="text-noir-muted">00:00:00</span>
+                                </div>
                             </div>
-                            <button id="btn-fullscreen" class="p-1 hover:text-cyan-400 transition">
-                                <i data-lucide="maximize" class="w-4 h-4"></i>
-                            </button>
+
+                            <!-- 右区：倍速 / 音量 / 全屏 -->
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <button id="btn-speed" onclick="cyclePlaybackRate()" title="切换倍速"
+                                    class="px-2.5 py-1 rounded-full bg-white/[0.05] hover:bg-white/10 border border-noir-border font-mono text-[11px] text-noir-amber transition active:scale-95">
+                                    1.0x
+                                </button>
+
+                                <div
+                                    class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.04] border border-noir-border">
+                                    <button onclick="toggleMute()" title="静音 (M)"
+                                        class="text-noir-cream/80 hover:text-noir-vermilion transition flex items-center">
+                                        <span id="volume-icon-wrap" class="flex items-center"></span>
+                                    </button>
+                                    <input type="range" id="volume-bar" min="0" max="1" step="0.05" value="1"
+                                        style="--progress: 100%;" class="cinema-slider vol-slider w-14 sm:w-20">
+                                </div>
+
+                                <button id="btn-fullscreen" title="全屏 (F)"
+                                    class="p-2 rounded-full bg-white/[0.05] hover:bg-white/10 border border-noir-border text-noir-cream hover:text-noir-vermilion transition active:scale-90">
+                                    <span id="fullscreen-icon-wrap" class="flex items-center"></span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
-            <!-- 右侧：媒体列表 (独立区域滚动) -->
-            <aside class="w-80 lg:w-96 h-full flex flex-col bg-brand-panel border-l border-brand-border flex-shrink-0">
-                <!-- 搜索与计数 -->
-                <div class="p-3 border-b border-brand-border bg-brand-card/40 flex-shrink-0">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold text-slate-300">视频列表</span>
+
+            <!-- 右侧：节目单（Filmstrip Archive Drawer） -->
+            <aside id="playlist-sidebar"
+                class="w-80 lg:w-[360px] h-full flex flex-col bg-noir-surface border-l border-noir-border flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden">
+
+                <!-- 片单标题与搜索 -->
+                <div class="p-4 border-b border-noir-border flex-shrink-0">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="font-mono text-[10px] tracking-[0.2em] uppercase text-noir-vermilion">PROGRAM</span>
+                            <span class="text-xs font-semibold text-noir-cream">放映片单</span>
+                        </div>
                         <span id="video-count"
-                            class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">0</span>
+                            class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-noir-muted border border-noir-border">0
+                            部</span>
                     </div>
+
                     <div class="relative">
-                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500"></i>
-                        <input type="text" id="search-input" placeholder="搜索本地视频..."
-                            class="w-full bg-slate-900 border border-slate-700 rounded-md pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-noir-muted"></i>
+                        <input type="text" id="search-input" placeholder="检索本地影片..."
+                            class="w-full bg-noir-bg border border-noir-border rounded-full pl-8 pr-8 py-1.5 text-xs text-noir-cream placeholder-noir-muted focus:outline-none focus:border-noir-vermilion/60 transition-colors">
+                        <button id="btn-clear-search" onclick="clearSearch()"
+                            class="hidden absolute right-3 top-2 text-noir-muted hover:text-noir-cream">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
                     </div>
                 </div>
-                <!-- 滚动列表主体 -->
-                <div id="video-list-container" class="flex-1 overflow-y-auto p-2 space-y-1.5">
-                    <!-- 动态注入项目 -->
+
+                <!-- 影片列表容器 -->
+                <div id="video-list-container" class="flex-1 overflow-y-auto divide-y divide-noir-border">
+                    <!-- 动态注入 -->
                 </div>
-                <!-- 底部简单统计 -->
+
+                <!-- 底部总览 -->
                 <div
-                    class="h-7 border-t border-brand-border bg-slate-950 px-3 flex items-center justify-between text-[10px] text-slate-500 flex-shrink-0 font-mono">
-                    <span id="total-size">0 MB</span>
-                    <span>READY</span>
+                    class="h-8 border-t border-noir-border bg-noir-bg px-4 flex items-center justify-between text-[10px] font-mono text-noir-muted flex-shrink-0">
+                    <span id="total-size">TOTAL: 0 MB</span>
+                    <span class="text-noir-amber/90">READY TO PROJECT</span>
                 </div>
             </aside>
         </div>
     </div>
+
     <script>
         lucide.createIcons();
+
         let playlist = [];
         let currentVideoIndex = -1;
         let toastTimeout = null;
-        // DOM 元素
+        let idleTimeout = null;
+        let lastVolume = 1;
+        let sidebarCollapsed = false;
+        let ambilightEnabled = true;
+        let ambilightTimer = null;
+        const speedRates = [0.75, 1.0, 1.25, 1.5, 2.0];
+        let speedIdx = 1;
+
+        // DOM 引用
         const welcomeScreen = document.getElementById('welcome-screen');
         const playerScreen = document.getElementById('player-screen');
+        const playerStage = document.getElementById('player-stage');
+        const playlistSidebar = document.getElementById('playlist-sidebar');
+        const ambilightCanvas = document.getElementById('ambilight-canvas');
+        const ambilightCtx = ambilightCanvas.getContext('2d', { alpha: false });
+        const btnAmbilight = document.getElementById('btn-ambilight');
+
         const folderInput = document.getElementById('folderInput');
         const fileInput = document.getElementById('fileInput');
         const dropZone = document.getElementById('drop-zone');
@@ -220,77 +640,83 @@
         const workspacePath = document.getElementById('workspace-path');
         const totalSizeEl = document.getElementById('total-size');
         const searchInput = document.getElementById('search-input');
-        // 控制栏
+        const btnClearSearch = document.getElementById('btn-clear-search');
+
         const btnPlay = document.getElementById('btn-play');
+        const centerPlayBtn = document.getElementById('center-play-btn');
         const progressBar = document.getElementById('progress-bar');
+        const progressTooltip = document.getElementById('progress-tooltip');
         const currentTimeEl = document.getElementById('current-time');
         const durationTimeEl = document.getElementById('duration-time');
         const volumeBar = document.getElementById('volume-bar');
-        const volumeIcon = document.getElementById('volume-icon');
+        const volumeIconWrap = document.getElementById('volume-icon-wrap');
         const btnFullscreen = document.getElementById('btn-fullscreen');
+        const fullscreenIconWrap = document.getElementById('fullscreen-icon-wrap');
+        const btnSpeed = document.getElementById('btn-speed');
         const hudToast = document.getElementById('hud-toast');
-        const hudIcon = document.getElementById('hud-icon');
+        const hudIconWrap = document.getElementById('hud-icon-wrap');
         const hudText = document.getElementById('hud-text');
 
-        // === 新增：优先使用 showDirectoryPicker，startIn:"desktop" 打开默认定位桌面，减少污染全局选择器路径
+        function setWrapIcon(el, iconName, className = 'w-4 h-4') {
+            el.innerHTML = `<i data-lucide="${iconName}" class="${className}"></i>`;
+            lucide.createIcons();
+        }
+        setWrapIcon(volumeIconWrap, 'volume-2', 'w-4 h-4');
+        setWrapIcon(fullscreenIconWrap, 'maximize', 'w-4 h-4');
+
+        // === 优先使用 showDirectoryPicker，startIn:"desktop" 防止记忆目录路径 ===
         async function openDirectoryPicker() {
-            // 判断浏览器是否支持目录句柄API（Chrome / Edge）
             if ('showDirectoryPicker' in window) {
                 try {
-                    // startIn:desktop：每次打开目录弹窗，默认从桌面启动，不会继承上次视频文件夹路径
-                    const dirHandle = await window.showDirectoryPicker({
-                        startIn: "desktop"
-                    });
+                    const dirHandle = await window.showDirectoryPicker({ startIn: "desktop" });
                     const files = [];
-                    // 递归读取文件夹里面全部文件
-                    async function readDirectory(handle) {
+                    async function readDirectory(handle, prefix = dirHandle.name) {
                         for await (const entry of handle.values()) {
                             if (entry.kind === 'file') {
                                 const fileObj = await entry.getFile();
-                                // 给webkitRelativePath模拟路径，保持界面显示一致
                                 Object.defineProperty(fileObj, 'webkitRelativePath', {
-                                    value: `${dirHandle.name}/${entry.name}`
+                                    value: `${prefix}/${entry.name}`
                                 });
                                 files.push(fileObj);
                             } else if (entry.kind === 'directory') {
-                                await readDirectory(entry);
+                                await readDirectory(entry, `${prefix}/${entry.name}`);
                             }
                         }
                     }
                     await readDirectory(dirHandle);
                     processFiles(files);
                 } catch (err) {
-                    // 用户点取消弹窗，静默返回
-                    if (err.name !== 'AbortError') {
-                        console.error(err);
-                    }
+                    if (err.name !== 'AbortError') console.error(err);
                 }
             } else {
-                // Firefox / Safari不支持，回退老的webkitdirectory input
                 folderInput.click();
             }
         }
 
-        // 拖拽支持
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-cyan-400'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-cyan-400'));
+        // 拖拽支持 + 取景器合焦动效
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-noir-vermilion', 'drop-active', 'scale-[1.01]');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-noir-vermilion', 'drop-active', 'scale-[1.01]');
+        });
         dropZone.addEventListener('drop', async (e) => {
             e.preventDefault();
-            dropZone.classList.remove('border-cyan-400');
-            // 如果浏览器支持 FileSystemFileHandle，拖拽文件夹优先新API
-            if ('getAsFileSystemHandle' in DataTransferItem.prototype) {
+            dropZone.classList.remove('border-noir-vermilion', 'drop-active', 'scale-[1.01]');
+            if ('getAsFileSystemHandle' in DataTransferItem.prototype && e.dataTransfer.items.length) {
                 const item = e.dataTransfer.items[0];
                 const handle = await item.getAsFileSystemHandle();
                 if (handle && handle.kind === "directory") {
                     const files = [];
-                    async function readDirectory(hd) {
+                    async function readDirectory(hd, prefix = hd.name) {
                         for await (const entry of hd.values()) {
                             if (entry.kind === 'file') {
                                 const f = await entry.getFile();
-                                Object.defineProperty(f, 'webkitRelativePath', { value: `${hd.name}/${entry.name}` });
+                                Object.defineProperty(f, 'webkitRelativePath', { value: `${prefix}/${entry.name}` });
                                 files.push(f);
                             } else if (entry.kind === 'directory') {
-                                await readDirectory(entry);
+                                await readDirectory(entry, `${prefix}/${entry.name}`);
                             }
                         }
                     }
@@ -299,59 +725,166 @@
                     return;
                 }
             }
-            // 降级
             if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
         });
 
         folderInput.addEventListener('change', (e) => processFiles(e.target.files));
         fileInput.addEventListener('change', (e) => processFiles(e.target.files));
 
-        function switchFolder() {
-            videoPlayer.pause();
-            videoPlayer.src = '';
-            playerScreen.classList.add('hidden');
-            welcomeScreen.classList.remove('hidden');
-            playlist = [];
+        // 页面转场
+        function showPlayerScreen() {
+            welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
+            playerScreen.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    playerScreen.classList.remove('opacity-0');
+                });
+            });
+            setTimeout(() => welcomeScreen.classList.add('hidden'), 550);
         }
-        // 解析与装载文件
+
+        function switchFolder() {
+            stopAmbilightLoop();
+            videoPlayer.pause();
+            if (videoPlayer.src && videoPlayer.src.startsWith('blob:')) {
+                URL.revokeObjectURL(videoPlayer.src);
+            }
+            videoPlayer.removeAttribute('src');
+            videoPlayer.load();
+
+            playerScreen.classList.add('opacity-0');
+            welcomeScreen.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    welcomeScreen.classList.remove('opacity-0', 'pointer-events-none');
+                });
+            });
+            setTimeout(() => {
+                playerScreen.classList.add('hidden');
+                playlist = [];
+                currentVideoIndex = -1;
+            }, 450);
+        }
+
+        function toggleSidebar() {
+            sidebarCollapsed = !sidebarCollapsed;
+            if (sidebarCollapsed) {
+                playlistSidebar.style.width = '0px';
+                playlistSidebar.style.opacity = '0';
+                playlistSidebar.style.borderLeftWidth = '0px';
+            } else {
+                playlistSidebar.style.width = '';
+                playlistSidebar.style.opacity = '1';
+                playlistSidebar.style.borderLeftWidth = '';
+            }
+        }
+
+        // ======================== 实时画面环境流光 (Ambilight) ========================
+        function toggleAmbilight() {
+            ambilightEnabled = !ambilightEnabled;
+            if (ambilightEnabled) {
+                ambilightCanvas.classList.remove('opacity-0');
+                ambilightCanvas.classList.add('opacity-55');
+                btnAmbilight.className = 'px-3 py-1.5 rounded-full text-[11px] font-mono border border-noir-amber/40 bg-noir-amber/10 text-noir-amber flex items-center gap-1.5 transition-all active:scale-95';
+                btnAmbilight.innerHTML = `<i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">流光 ON</span>`;
+                startAmbilightLoop();
+            } else {
+                ambilightCanvas.classList.remove('opacity-55');
+                ambilightCanvas.classList.add('opacity-0');
+                btnAmbilight.className = 'px-3 py-1.5 rounded-full text-[11px] font-mono border border-noir-border bg-noir-elevated text-noir-muted flex items-center gap-1.5 transition-all active:scale-95';
+                btnAmbilight.innerHTML = `<i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">流光 OFF</span>`;
+                stopAmbilightLoop();
+            }
+            lucide.createIcons();
+        }
+
+        function drawAmbilightFrame() {
+            if (!ambilightEnabled || videoPlayer.readyState < 2) return;
+            try {
+                ambilightCtx.drawImage(videoPlayer, 0, 0, ambilightCanvas.width, ambilightCanvas.height);
+            } catch (e) { }
+        }
+
+        function startAmbilightLoop() {
+            stopAmbilightLoop();
+            if (!ambilightEnabled) return;
+            drawAmbilightFrame();
+            ambilightTimer = setInterval(() => {
+                if (!videoPlayer.paused && !videoPlayer.ended) {
+                    drawAmbilightFrame();
+                }
+            }, 120);
+        }
+
+        function stopAmbilightLoop() {
+            if (ambilightTimer) {
+                clearInterval(ambilightTimer);
+                ambilightTimer = null;
+            }
+        }
+
+        // ======================== 空闲自动隐退控制栏 ========================
+        function resetIdleTimer() {
+            playerStage.classList.remove('stage-idle');
+            clearTimeout(idleTimeout);
+            if (!videoPlayer.paused) {
+                idleTimeout = setTimeout(() => {
+                    playerStage.classList.add('stage-idle');
+                }, 2400);
+            }
+        }
+        playerStage.addEventListener('mousemove', resetIdleTimer);
+        playerStage.addEventListener('mouseleave', () => {
+            if (!videoPlayer.paused) {
+                clearTimeout(idleTimeout);
+                idleTimeout = setTimeout(() => playerStage.classList.add('stage-idle'), 600);
+            }
+        });
+
+        // ======================== 文件解析与片单渲染 ========================
         function processFiles(files) {
-            const validExtensions = ['.mp4', '.mkv', '.webm', '.mov', '.avi'];
-            playlist = Array.from(files).filter(file => {
-                const ext = '.' + file.name.split('.').pop().toLowerCase();
-                return validExtensions.includes(ext) || file.type.startsWith('video/');
-            }).map((file, idx) => ({
+            const validExtensions = ['.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v'];
+            const filtered = Array.from(files)
+                .filter(file => {
+                    const ext = '.' + file.name.split('.').pop().toLowerCase();
+                    return validExtensions.includes(ext) || file.type.startsWith('video/');
+                })
+                .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { numeric: true }));
+
+            playlist = filtered.map((file, idx) => ({
                 id: idx,
                 file: file,
                 name: file.name,
                 size: formatBytes(file.size),
                 rawSize: file.size,
+                duration: null,
                 thumbnail: null
             }));
+
             if (playlist.length === 0) {
                 alert('该目录下未找到支持的视频文件！');
                 return;
             }
-            // 设置显示路径
-            const samplePath = files[0].webkitRelativePath;
-            workspacePath.textContent = samplePath ? samplePath.split('/')[0] : '本地视频集';
-            // 统计容量
+
+            const samplePath = filtered[0].webkitRelativePath;
+            workspacePath.textContent = samplePath ? samplePath.split('/')[0] : '本地放映库';
             const totalBytes = playlist.reduce((sum, item) => sum + item.rawSize, 0);
-            totalSizeEl.textContent = `总计: ${formatBytes(totalBytes)}`;
-            welcomeScreen.classList.add('hidden');
-            playerScreen.classList.remove('hidden');
+            totalSizeEl.textContent = `TOTAL: ${formatBytes(totalBytes)}`;
+
+            showPlayerScreen();
             lucide.createIcons();
-            renderPlaylist(playlist);
-            // 【核心修改】只装载第一部视频元数据，不自动播放
+            renderPlaylist(playlist, true);
             loadVideo(0, false);
-            // 异步抓取前几帧作为缩略图
             generateThumbnails();
         }
+
         function formatBytes(bytes) {
             if (!bytes) return '0 B';
             const k = 1024, sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
+
         function formatTime(seconds) {
             if (isNaN(seconds)) return "00:00:00";
             const h = Math.floor(seconds / 3600);
@@ -359,61 +892,141 @@
             const s = Math.floor(seconds % 60);
             return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
         }
-        // 渲染右侧列表
-        function renderPlaylist(list) {
-            videoCount.textContent = `${list.length} 个项目`;
+
+        function formatDurationShort(seconds) {
+            if (!seconds || isNaN(seconds)) return "";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
+            return [m, s].map(v => v < 10 ? "0" + v : v).join(":");
+        }
+
+        function renderPlaylist(list, animate = true) {
+            videoCount.textContent = `${list.length} 部`;
             videoListContainer.innerHTML = '';
-            list.forEach((item) => {
+
+            if (list.length === 0) {
+                videoListContainer.innerHTML = `
+                    <div class="h-44 flex flex-col items-center justify-center text-noir-muted text-xs gap-2 font-mono">
+                        <i data-lucide="film" class="w-5 h-5 opacity-40"></i>
+                        <span>NO MATCHING FILM</span>
+                    </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            const isPlaying = !videoPlayer.paused;
+
+            list.forEach((item, idx) => {
                 const isCurrent = item.id === currentVideoIndex;
+                const numLabel = String(item.id + 1).padStart(2, '0');
                 const card = document.createElement('div');
-                card.className = `flex items-center gap-2.5 p-2 rounded border cursor-pointer transition ${isCurrent
-                    ? 'bg-cyan-950/40 border-cyan-500/50'
-                    : 'bg-brand-card/40 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
+                card.dataset.videoId = item.id;
+                if (animate) card.style.animationDelay = `${Math.min(idx * 25, 280)}ms`;
+
+                card.className = `${animate ? 'list-item-anim' : ''} group relative flex items-center gap-3 p-3 cursor-pointer transition-colors duration-200 ${isCurrent
+                        ? 'bg-noir-vermilion/[0.08]'
+                        : 'hover:bg-white/[0.03]'
                     }`;
+
                 card.innerHTML = `
-          <div class="w-20 h-12 bg-slate-900 rounded overflow-hidden flex-shrink-0 relative border border-slate-800 flex items-center justify-center">
-            ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-cover">` : `<i data-lucide="film" class="w-4 h-4 text-slate-600"></i>`}
-            ${isCurrent ? '<div class="absolute inset-0 bg-cyan-500/20 flex items-center justify-center"><i data-lucide="play" class="w-3.5 h-3.5 text-cyan-400 fill-current"></i></div>' : ''}
-          </div>
-          <div class="flex-1 min-w-0">
-            <h4 class="text-xs ${isCurrent ? 'text-cyan-300 font-medium' : 'text-slate-300'} truncate" title="${item.name}">${item.name}</h4>
-            <div class="text-[10px] text-slate-500 font-mono mt-1">${item.size}</div>
-          </div>
-        `;
-                // 点击切换并立即播放
+                    ${isCurrent ? '<span class="absolute left-0 top-0 bottom-0 w-[3px] bg-noir-vermilion"></span>' : ''}
+                    <span class="font-mono text-[10px] w-5 text-center flex-shrink-0 ${isCurrent ? 'text-noir-vermilion font-bold' : 'text-noir-muted'}">
+                        ${numLabel}
+                    </span>
+
+                    <div class="w-24 h-14 bg-black rounded-md overflow-hidden flex-shrink-0 relative border ${isCurrent ? 'border-noir-vermilion/60' : 'border-noir-border'} flex items-center justify-center">
+                        ${item.thumbnail
+                        ? `<img src="${item.thumbnail}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">`
+                        : `<i data-lucide="clapperboard" class="w-4 h-4 text-noir-muted/40"></i>`
+                    }
+                        ${item.duration ? `<span class="duration-badge absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[9px] font-mono text-noir-cream leading-none">${item.duration}</span>` : ''}
+                        ${isCurrent ? `
+                            <div class="absolute inset-0 bg-black/45 flex items-center justify-center gap-1 ${isPlaying ? '' : 'meter-paused'}">
+                                <span class="meter-bar"></span>
+                                <span class="meter-bar"></span>
+                                <span class="meter-bar"></span>
+                            </div>` : ''}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-xs leading-snug ${isCurrent ? 'text-noir-cream font-semibold' : 'text-noir-cream/80 group-hover:text-noir-cream'} truncate" title="${item.name}">
+                            ${item.name}
+                        </h4>
+                        <div class="flex items-center gap-2 mt-1.5 font-mono text-[10px] text-noir-muted">
+                            <span>${item.size}</span>
+                            ${isCurrent ? '<span class="text-noir-vermilion">· NOW PLAYING</span>' : ''}
+                        </div>
+                    </div>
+                `;
+
                 card.onclick = () => loadVideo(item.id, true);
                 videoListContainer.appendChild(card);
             });
             lucide.createIcons();
         }
-        // 装载视频：autoPlay 控制是否直接播放
+
+        // 装载影片
         function loadVideo(index, autoPlay = false) {
             if (index < 0 || index >= playlist.length) return;
             currentVideoIndex = index;
             const target = playlist[index];
-            if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+
+            if (videoPlayer.src && videoPlayer.src.startsWith('blob:')) {
+                URL.revokeObjectURL(videoPlayer.src);
+            }
             videoPlayer.src = URL.createObjectURL(target.file);
+            videoPlayer.playbackRate = speedRates[speedIdx];
             playingTitle.textContent = target.name;
+
+            progressBar.value = 0;
+            progressBar.style.setProperty('--progress', '0%');
+            currentTimeEl.textContent = '00:00:00';
+
             if (autoPlay) {
-                videoPlayer.play();
+                videoPlayer.play().catch(() => { });
                 setPlayingUI(true);
             } else {
                 videoPlayer.pause();
                 setPlayingUI(false);
             }
-            renderPlaylist(filterPlaylist(searchInput.value));
+
+            renderPlaylist(filterPlaylist(searchInput.value), false);
+            const activeCard = videoListContainer.querySelector(`[data-video-id="${index}"]`);
+            if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+
+        function playAdjacent(step) {
+            if (playlist.length === 0) return;
+            const nextIdx = currentVideoIndex + step;
+            if (nextIdx >= 0 && nextIdx < playlist.length) {
+                loadVideo(nextIdx, true);
+            } else {
+                showHUD('info', step > 0 ? '已是最后一部' : '已是第一部');
+            }
+        }
+
         function setPlayingUI(isPlaying) {
             if (isPlaying) {
-                btnPlay.innerHTML = `<i data-lucide="pause" class="w-4 h-4 fill-current"></i>`;
-                statusIndicator.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-pulse';
+                setWrapIcon(btnPlay, 'pause', 'w-4 h-4 fill-current');
+                centerPlayBtn.classList.add('opacity-0', 'scale-75', 'pointer-events-none');
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-noir-vermilion animate-pulse flex-shrink-0';
+                startAmbilightLoop();
+                resetIdleTimer();
             } else {
-                btnPlay.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i>`;
-                statusIndicator.className = 'w-2 h-2 rounded-full bg-slate-500';
+                setWrapIcon(btnPlay, 'play', 'w-4 h-4 fill-current ml-0.5');
+                centerPlayBtn.classList.remove('opacity-0', 'scale-75', 'pointer-events-none');
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-noir-muted flex-shrink-0';
+                stopAmbilightLoop();
+                playerStage.classList.remove('stage-idle');
+                clearTimeout(idleTimeout);
             }
-            lucide.createIcons();
+            renderPlaylist(filterPlaylist(searchInput.value), false);
         }
+
         function togglePlay() {
+            if (!videoPlayer.src) return;
             if (videoPlayer.paused) {
                 videoPlayer.play();
                 setPlayingUI(true);
@@ -422,75 +1035,129 @@
                 setPlayingUI(false);
             }
         }
-        // 屏幕居中浮层提示 HUD
+
         function showHUD(iconName, text) {
             clearTimeout(toastTimeout);
-            hudIcon.setAttribute('data-lucide', iconName);
+            setWrapIcon(hudIconWrap, iconName, 'w-4 h-4');
             hudText.textContent = text;
-            lucide.createIcons();
-            hudToast.classList.remove('opacity-0');
+            hudToast.classList.add('hud-pop');
             toastTimeout = setTimeout(() => {
-                hudToast.classList.add('opacity-0');
-            }, 700);
+                hudToast.classList.remove('hud-pop');
+            }, 850);
         }
-        // 调节音量 (步进 ±0.1)
+
+        function updateVolumeUI(v) {
+            volumeBar.value = v;
+            volumeBar.style.setProperty('--progress', `${v * 100}%`);
+            const icon = v === 0 ? 'volume-x' : (v < 0.5 ? 'volume-1' : 'volume-2');
+            setWrapIcon(volumeIconWrap, icon, 'w-4 h-4');
+        }
+
         function changeVolume(delta) {
             let v = Math.round((videoPlayer.volume + delta) * 10) / 10;
             v = Math.max(0, Math.min(1, v));
             videoPlayer.volume = v;
-            volumeBar.value = v;
-            const percent = Math.round(v * 100);
-            showHUD(v === 0 ? 'volume-x' : 'volume-2', `音量: ${percent}%`);
+            if (v > 0) lastVolume = v;
+            updateVolumeUI(v);
+            showHUD(v === 0 ? 'volume-x' : 'volume-2', `音量 ${Math.round(v * 100)}%`);
         }
-        // 快进快退 (步进 ±5秒)
+
+        function toggleMute() {
+            if (videoPlayer.volume > 0) {
+                lastVolume = videoPlayer.volume;
+                videoPlayer.volume = 0;
+                updateVolumeUI(0);
+                showHUD('volume-x', '已静音');
+            } else {
+                const target = lastVolume || 1;
+                videoPlayer.volume = target;
+                updateVolumeUI(target);
+                showHUD('volume-2', `音量 ${Math.round(target * 100)}%`);
+            }
+        }
+
+        function cyclePlaybackRate() {
+            speedIdx = (speedIdx + 1) % speedRates.length;
+            const rate = speedRates[speedIdx];
+            videoPlayer.playbackRate = rate;
+            btnSpeed.textContent = `${rate.toFixed(rate % 1 === 0 ? 1 : 2).replace(/\.00$/, '.0')}x`;
+            showHUD('gauge', `倍速 ${btnSpeed.textContent}`);
+        }
+
         function seekRelative(delta) {
             if (isNaN(videoPlayer.duration)) return;
             videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, videoPlayer.currentTime + delta));
             showHUD(delta > 0 ? 'fast-forward' : 'rewind', `${delta > 0 ? '+5s' : '-5s'}`);
+            setTimeout(drawAmbilightFrame, 60);
         }
-        // ======================== 快捷键响应 ========================
+
+        // ======================== 快捷键与双击交互 ========================
         window.addEventListener('keydown', (e) => {
-            // 避免在搜索框打字时误触
+            if (playerScreen.classList.contains('hidden')) return;
             if (e.target === searchInput) return;
             const key = e.key.toLowerCase();
-            // 空格：播放/暂停
+
             if (e.code === 'Space') {
                 e.preventDefault();
                 togglePlay();
-            }
-            // 快退 5秒: 方向左 或 A
-            else if (e.code === 'ArrowLeft' || key === 'a') {
+            } else if (e.code === 'ArrowLeft' || key === 'a') {
                 e.preventDefault();
                 seekRelative(-5);
-            }
-            // 快进 5秒: 方向右 或 D
-            else if (e.code === 'ArrowRight' || key === 'd') {
+            } else if (e.code === 'ArrowRight' || key === 'd') {
                 e.preventDefault();
                 seekRelative(5);
-            }
-            // 音量增加 10%: 方向上 或 W
-            else if (e.code === 'ArrowUp' || key === 'w') {
+            } else if (e.code === 'ArrowUp' || key === 'w') {
                 e.preventDefault();
                 changeVolume(0.1);
-            }
-            // 音量减小 10%: 方向下 或 S
-            else if (e.code === 'ArrowDown' || key === 's') {
+            } else if (e.code === 'ArrowDown' || key === 's') {
                 e.preventDefault();
                 changeVolume(-0.1);
+            } else if (key === 'm') {
+                e.preventDefault();
+                toggleMute();
+            } else if (key === 'f') {
+                e.preventDefault();
+                btnFullscreen.click();
             }
         });
-        // 基础事件监听
+
+        // 单击播放/暂停，双击左右快进快退
+        let clickTimer = null;
+        videoPlayer.addEventListener('click', (e) => {
+            clearTimeout(clickTimer);
+            clickTimer = setTimeout(() => {
+                togglePlay();
+            }, 180);
+        });
+        videoPlayer.addEventListener('dblclick', (e) => {
+            clearTimeout(clickTimer);
+            const rect = videoPlayer.getBoundingClientRect();
+            const isLeft = (e.clientX - rect.left) < rect.width * 0.45;
+            const isRight = (e.clientX - rect.left) > rect.width * 0.55;
+            if (isLeft) seekRelative(-5);
+            else if (isRight) seekRelative(5);
+            else btnFullscreen.click();
+        });
+
         btnPlay.addEventListener('click', togglePlay);
-        videoPlayer.addEventListener('click', togglePlay);
-        videoPlayer.addEventListener('timeupdate', () => {
-            if (!isNaN(videoPlayer.duration)) {
-                progressBar.value = (videoPlayer.currentTime / videoPlayer.duration) * 100;
-                currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
-            }
+
+        videoPlayer.addEventListener('loadeddata', () => {
+            drawAmbilightFrame();
         });
+
         videoPlayer.addEventListener('loadedmetadata', () => {
             durationTimeEl.textContent = formatTime(videoPlayer.duration);
         });
+
+        videoPlayer.addEventListener('timeupdate', () => {
+            if (!isNaN(videoPlayer.duration) && videoPlayer.duration > 0) {
+                const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                progressBar.value = percent;
+                progressBar.style.setProperty('--progress', `${percent}%`);
+                currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+            }
+        });
+
         videoPlayer.addEventListener('ended', () => {
             if (currentVideoIndex + 1 < playlist.length) {
                 loadVideo(currentVideoIndex + 1, true);
@@ -498,51 +1165,114 @@
                 setPlayingUI(false);
             }
         });
+
         progressBar.addEventListener('input', (e) => {
-            videoPlayer.currentTime = (e.target.value / 100) * videoPlayer.duration;
+            if (isNaN(videoPlayer.duration)) return;
+            const pct = parseFloat(e.target.value);
+            progressBar.style.setProperty('--progress', `${pct}%`);
+            videoPlayer.currentTime = (pct / 100) * videoPlayer.duration;
         });
+
+        progressBar.addEventListener('mousemove', (e) => {
+            if (isNaN(videoPlayer.duration)) return;
+            const rect = progressBar.getBoundingClientRect();
+            const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            progressTooltip.textContent = formatTime(ratio * videoPlayer.duration);
+            progressTooltip.style.left = `${ratio * 100}%`;
+            progressTooltip.classList.remove('hidden');
+        });
+
+        progressBar.addEventListener('mouseleave', () => {
+            progressTooltip.classList.add('hidden');
+        });
+
         volumeBar.addEventListener('input', (e) => {
-            videoPlayer.volume = e.target.value;
+            const v = parseFloat(e.target.value);
+            videoPlayer.volume = v;
+            if (v > 0) lastVolume = v;
+            updateVolumeUI(v);
         });
+
         btnFullscreen.addEventListener('click', () => {
             if (!document.fullscreenElement) {
-                videoPlayer.parentElement.requestFullscreen();
+                playerStage.requestFullscreen();
             } else {
                 document.exitFullscreen();
             }
         });
-        // 过滤列表
+
+        document.addEventListener('fullscreenchange', () => {
+            setWrapIcon(fullscreenIconWrap, document.fullscreenElement ? 'minimize' : 'maximize', 'w-4 h-4');
+        });
+
+        // 搜索
         function filterPlaylist(keyword) {
             if (!keyword.trim()) return playlist;
             return playlist.filter(item => item.name.toLowerCase().includes(keyword.toLowerCase()));
         }
+
+        function clearSearch() {
+            searchInput.value = '';
+            btnClearSearch.classList.add('hidden');
+            renderPlaylist(playlist, false);
+        }
+
         searchInput.addEventListener('input', (e) => {
-            renderPlaylist(filterPlaylist(e.target.value));
+            btnClearSearch.classList.toggle('hidden', !e.target.value);
+            renderPlaylist(filterPlaylist(e.target.value), false);
         });
-        // 截帧生成真实缩略图
+
+        // 异步抓取缩略图与真实时长
         async function generateThumbnails() {
             for (let item of playlist) {
+                if (playlist.length === 0) break;
                 try {
-                    const thumb = await captureVideoFrame(item.file);
+                    const { thumb, duration } = await captureVideoFrame(item.file);
                     item.thumbnail = thumb;
-                    renderPlaylist(filterPlaylist(searchInput.value));
+                    item.duration = duration;
+                    const card = videoListContainer.querySelector(`[data-video-id="${item.id}"]`);
+                    if (card) {
+                        const imgBox = card.querySelector('.w-24');
+                        const icon = imgBox.querySelector('svg');
+                        if (icon && !imgBox.querySelector('img')) {
+                            const img = document.createElement('img');
+                            img.src = thumb;
+                            img.className = 'w-full h-full object-cover transition-transform duration-500 group-hover:scale-105';
+                            icon.replaceWith(img);
+                        }
+                        if (duration && !imgBox.querySelector('.duration-badge')) {
+                            const badge = document.createElement('span');
+                            badge.className = 'duration-badge absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[9px] font-mono text-noir-cream leading-none';
+                            badge.textContent = duration;
+                            imgBox.appendChild(badge);
+                        }
+                    }
                 } catch (err) { }
             }
         }
+
         function captureVideoFrame(file) {
             return new Promise((resolve, reject) => {
                 const tempVideo = document.createElement('video');
-                tempVideo.src = URL.createObjectURL(file);
+                const blobUrl = URL.createObjectURL(file);
+                tempVideo.src = blobUrl;
                 tempVideo.muted = true;
-                tempVideo.onloadeddata = () => { tempVideo.currentTime = 1; };
+                tempVideo.onloadeddata = () => {
+                    tempVideo.currentTime = Math.min(2, tempVideo.duration ? tempVideo.duration * 0.1 : 1);
+                };
                 tempVideo.onseeked = () => {
                     const canvas = document.createElement('canvas');
-                    canvas.width = 160; canvas.height = 90;
-                    canvas.getContext('2d').drawImage(tempVideo, 0, 0, 160, 90);
-                    URL.revokeObjectURL(tempVideo.src);
-                    resolve(canvas.toDataURL('image/jpeg', 0.5));
+                    canvas.width = 192;
+                    canvas.height = 108;
+                    canvas.getContext('2d').drawImage(tempVideo, 0, 0, 192, 108);
+                    const duration = formatDurationShort(tempVideo.duration);
+                    URL.revokeObjectURL(blobUrl);
+                    resolve({ thumb: canvas.toDataURL('image/jpeg', 0.6), duration });
                 };
-                tempVideo.onerror = () => { URL.revokeObjectURL(tempVideo.src); reject(); };
+                tempVideo.onerror = () => {
+                    URL.revokeObjectURL(blobUrl);
+                    reject();
+                };
             });
         }
     </script>
