@@ -33,7 +33,6 @@
             color: #ffffff;
         }
 
-        /* 滚动条 */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -52,7 +51,6 @@
             background: #E50914;
         }
 
-        /* 欢迎页斜向海报墙背景动画 */
         @keyframes wallDrift {
             0% {
                 transform: rotate(-12deg) translateY(0px) scale(1.15);
@@ -71,7 +69,6 @@
             animation: wallDrift 22s ease-in-out infinite;
         }
 
-        /* 网飞卡片悬浮放大动效 */
         .nf-card {
             transition: transform 0.28s cubic-bezier(0.25, 0.8, 0.25, 1),
                 box-shadow 0.28s ease,
@@ -84,7 +81,6 @@
             z-index: 20;
         }
 
-        /* 入场渐显 */
         @keyframes fadeSlideUp {
             from {
                 opacity: 0;
@@ -101,7 +97,6 @@
             animation: fadeSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
         }
 
-        /* 网飞红进度条 */
         input[type="range"].nf-slider {
             -webkit-appearance: none;
             appearance: none;
@@ -150,7 +145,6 @@
             margin-top: -5px;
         }
 
-        /* 播放器闲置隐退 */
         .player-idle {
             cursor: none;
         }
@@ -178,9 +172,9 @@
 
     <!-- ======================== 界面 1: Netflix 暗夜片库入口 ======================== -->
     <div id="welcome-screen"
-        class="fixed inset-0 z-50 flex flex-col justify-between bg-nf-bg overflow-hidden transition-all duration-500">
+        class="fixed inset-0 z-40 flex flex-col justify-between bg-nf-bg overflow-hidden transition-all duration-500">
 
-        <!-- 背景斜向虚拟海报矩阵（纯 CSS 氛围底纹） -->
+        <!-- 背景斜向虚拟海报矩阵 -->
         <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-25">
             <div class="poster-wall-bg grid grid-cols-4 sm:grid-cols-6 gap-4 p-6">
                 <div class="aspect-video rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/5">
@@ -230,7 +224,6 @@
                 </div>
             </div>
         </div>
-        <!-- 暗角径向遮罩 -->
         <div
             class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,20,20,0.65)_0%,#141414_78%)]">
         </div>
@@ -258,7 +251,7 @@
                 <div
                     class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-nf-red/15 border border-nf-red/30 text-nf-red text-xs font-semibold mb-5">
                     <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-                    <span>本地硬件解码 · 自动生成海报墙</span>
+                    <span>本地硬件解码 · 支持子目录多选过滤</span>
                 </div>
 
                 <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white mb-4 leading-tight">
@@ -266,16 +259,16 @@
                 </h1>
 
                 <p class="text-sm sm:text-base text-nf-muted max-w-lg mx-auto mb-8">
-                    将本地视频文件夹拖入此处，或点击下方按钮载入目录，自动识别子文件夹分类并抓取高清封面。
+                    将视频文件夹拖入此处或点击按钮载入。若目录内包含多个子文件夹，可自由勾选需要导入的目录。
                 </p>
 
                 <div class="flex flex-wrap items-center justify-center gap-3.5">
-                    <button type="button" onclick="openDirectoryPicker()"
+                    <button type="button" onclick="openDirectoryPicker(false)"
                         class="px-7 py-3.5 rounded-md bg-nf-red hover:bg-nf-redHover text-white font-bold text-sm flex items-center gap-2.5 shadow-lg shadow-nf-red/30 transition-all hover:scale-[1.03] active:scale-95">
                         <i data-lucide="folder-open" class="w-5 h-5"></i>
                         <span>选择视频文件夹</span>
                     </button>
-                    <button type="button" onclick="fileInput.click()"
+                    <button type="button" onclick="triggerFileInput(false)"
                         class="px-6 py-3.5 rounded-md bg-white/15 hover:bg-white/25 text-white font-semibold text-sm flex items-center gap-2 backdrop-blur-md transition-all hover:scale-[1.03] active:scale-95">
                         <i data-lucide="film" class="w-5 h-5"></i>
                         <span>选择独立文件</span>
@@ -289,11 +282,61 @@
         </main>
 
         <footer class="relative z-10 px-6 sm:px-12 h-14 flex items-center justify-center text-xs text-zinc-500">
-            <span>拖入文件夹即可自动递归扫描全部子目录视频</span>
+            <span>拖入包含多个子目录的父文件夹时，将弹出目录多选清单</span>
         </footer>
 
         <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
         <input type="file" id="fileInput" accept="video/*" multiple class="hidden">
+    </div>
+
+    <!-- ======================== 新增：子文件夹多选弹窗 ======================== -->
+    <div id="folder-select-modal"
+        class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div
+            class="w-full max-w-lg rounded-xl bg-nf-surface border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[82vh]">
+            <!-- 弹窗头 -->
+            <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded-full bg-nf-red"></span>
+                        <h3 class="text-base font-bold text-white">选择要载入的子文件夹</h3>
+                    </div>
+                    <p class="text-xs text-nf-muted mt-1">仅勾选的文件夹会被导入海报墙，未勾选的将被忽略</p>
+                </div>
+                <button onclick="cancelFolderModal()"
+                    class="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- 快捷操作栏 -->
+            <div class="px-5 py-2.5 bg-black/30 border-b border-white/10 flex items-center justify-between text-xs">
+                <span id="modal-summary" class="text-zinc-300 font-mono">已选 0 个文件夹 (0 部)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleAllModalFolders(true)"
+                        class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition">全选</button>
+                    <button onclick="toggleAllModalFolders(false)"
+                        class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-zinc-300 transition">清空</button>
+                </div>
+            </div>
+
+            <!-- 文件夹勾选列表 -->
+            <div id="modal-folder-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- 动态注入 -->
+            </div>
+
+            <!-- 底部确认按钮 -->
+            <div class="px-5 py-3.5 border-t border-white/10 bg-black/40 flex items-center justify-end gap-3">
+                <button onclick="cancelFolderModal()"
+                    class="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition">
+                    取消
+                </button>
+                <button id="btn-confirm-folders" onclick="confirmFolderModal()"
+                    class="px-5 py-2 rounded-md bg-nf-red hover:bg-nf-redHover disabled:opacity-40 disabled:pointer-events-none text-xs font-bold text-white transition">
+                    确认载入
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- ======================== 界面 2: Netflix 海报墙大厅 ======================== -->
@@ -303,7 +346,7 @@
         <!-- 顶部吸顶导航栏 -->
         <nav id="wall-navbar"
             class="fixed top-0 left-0 right-0 z-30 h-16 px-5 sm:px-10 flex items-center justify-between transition-colors duration-300 bg-gradient-to-b from-black/85 to-transparent">
-            <div class="flex items-center gap-6 min-w-0">
+            <div class="flex items-center gap-5 min-w-0">
                 <div class="flex items-center gap-2 flex-shrink-0 cursor-pointer" onclick="scrollWallTop()">
                     <span class="text-xl font-black tracking-tighter text-nf-red">NETSTREAM</span>
                 </div>
@@ -314,9 +357,9 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5">
                 <!-- 搜索框 -->
-                <div class="relative w-44 sm:w-64">
+                <div class="relative w-36 sm:w-56">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-zinc-400"></i>
                     <input type="text" id="search-input" placeholder="搜索片名..."
                         class="w-full bg-black/60 backdrop-blur-md border border-white/15 rounded-full pl-9 pr-8 py-1.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-white transition-all">
@@ -326,8 +369,15 @@
                     </button>
                 </div>
 
+                <!-- 新增：追加目录按钮 -->
+                <button onclick="openDirectoryPicker(true)" title="再添加一个文件夹到当前片库"
+                    class="px-3 py-1.5 rounded-md bg-nf-red/90 hover:bg-nf-red text-xs font-semibold text-white flex items-center gap-1.5 transition active:scale-95 flex-shrink-0">
+                    <i data-lucide="folder-plus" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">追加目录</span>
+                </button>
+
                 <button onclick="switchFolder()"
-                    class="px-3.5 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-medium text-white flex items-center gap-1.5 transition active:scale-95 flex-shrink-0">
+                    class="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-medium text-white flex items-center gap-1.5 transition active:scale-95 flex-shrink-0">
                     <i data-lucide="folder-sync" class="w-3.5 h-3.5"></i>
                     <span class="hidden sm:inline">更换目录</span>
                 </button>
@@ -337,21 +387,17 @@
         <!-- 海报墙主滚动容器 -->
         <div id="wall-scroll-container" class="flex-1 overflow-y-auto scroll-smooth">
 
-            <!-- 顶部巨幕推荐横幅 (Hero Billboard) -->
+            <!-- 顶部巨幕推荐横幅 -->
             <section id="hero-banner"
                 class="relative w-full h-[54vh] min-h-[380px] max-h-[540px] flex items-end overflow-hidden bg-zinc-950">
-                <!-- 推荐影片封面大图 -->
                 <img id="hero-bg-img" src="" alt=""
                     class="absolute inset-0 w-full h-full object-cover opacity-0 scale-105 transition-all duration-1000">
-                <!-- 备用无图纹理 -->
                 <div id="hero-fallback-bg"
                     class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#3f0d12_0%,_#141414_70%)]"></div>
 
-                <!-- 电影级暗角渐变遮罩（底部融入 #141414，左侧压暗保证文字清晰） -->
                 <div class="absolute inset-0 bg-gradient-to-t from-nf-bg via-nf-bg/45 to-black/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-nf-bg via-nf-bg/70 to-transparent"></div>
 
-                <!-- 推荐影片信息 -->
                 <div class="relative z-10 w-full px-5 sm:px-10 pb-10 max-w-4xl">
                     <div class="flex items-center gap-2 mb-2.5">
                         <span
@@ -385,9 +431,8 @@
                 </div>
             </section>
 
-            <!-- 分类筛选栏 + 海报网格区域 -->
+            <!-- 分类多选筛选栏 + 海报网格 -->
             <section class="relative z-10 px-5 sm:px-10 pb-16 -mt-2">
-                <!-- 统计与子目录分类胶囊 -->
                 <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
                     <div class="flex items-center gap-3">
                         <h3 class="text-lg sm:text-xl font-bold text-white">全部影片</h3>
@@ -396,16 +441,12 @@
                         <span id="total-size" class="text-xs font-mono text-zinc-500 hidden sm:inline">总计 0 MB</span>
                     </div>
 
-                    <!-- 子文件夹分类过滤器 -->
-                    <div id="category-pills" class="flex flex-wrap items-center gap-2">
-                        <!-- 动态注入子目录标签 -->
-                    </div>
+                    <!-- 支持多选的目录分类胶囊 -->
+                    <div id="category-pills" class="flex flex-wrap items-center gap-2"></div>
                 </div>
 
-                <!-- 16:9 Netflix 海报墙网格 -->
                 <div id="poster-grid"
                     class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
-                    <!-- 动态注入海报卡片 -->
                 </div>
             </section>
         </div>
@@ -415,7 +456,6 @@
     <div id="player-overlay"
         class="hidden opacity-0 fixed inset-0 z-50 bg-black flex flex-col overflow-hidden transition-opacity duration-300">
 
-        <!-- 顶部浮层控制栏 -->
         <div
             class="player-chrome-top absolute top-0 left-0 right-0 z-30 h-20 px-5 sm:px-8 flex items-center justify-between bg-gradient-to-b from-black/85 via-black/40 to-transparent transition-all duration-300">
             <button onclick="closePlayerToWall()"
@@ -437,26 +477,21 @@
             </button>
         </div>
 
-        <!-- 快捷键弹性 HUD -->
         <div id="hud-toast" style="transform: translate(-50%, -50%) scale(0.85);"
             class="absolute top-1/2 left-1/2 z-40 pointer-events-none opacity-0 transition-all duration-200 flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-black/80 border border-white/15 backdrop-blur-xl shadow-2xl text-sm font-mono text-white">
             <span id="hud-icon-wrap" class="flex items-center text-nf-red"></span>
             <span id="hud-text" class="font-semibold">音量 100%</span>
         </div>
 
-        <!-- 居中大播放按钮（暂停时显示） -->
         <button id="center-play-btn" onclick="togglePlay()"
             class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-20 h-20 rounded-full bg-black/60 hover:bg-nf-red text-white border border-white/25 hover:border-nf-red backdrop-blur-md flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95">
             <i data-lucide="play" class="w-8 h-8 fill-current ml-1"></i>
         </button>
 
-        <!-- 原生视频节点 -->
         <video id="video-player" class="w-full h-full object-contain cursor-pointer" playsinline></video>
 
-        <!-- 底部控制栏 -->
         <div
             class="player-chrome-bottom absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/95 via-black/75 to-transparent px-5 sm:px-8 pb-5 pt-12 transition-all duration-300">
-            <!-- 进度条与悬停时间预览 -->
             <div class="relative flex items-center mb-3.5">
                 <div id="progress-tooltip"
                     class="hidden absolute -top-9 -translate-x-1/2 px-2.5 py-1 rounded bg-zinc-900 border border-white/20 text-xs font-mono text-white pointer-events-none shadow-lg">
@@ -466,7 +501,6 @@
             </div>
 
             <div class="flex items-center justify-between gap-4">
-                <!-- 左：播放/上下集/时间 -->
                 <div class="flex items-center gap-3">
                     <button id="btn-play"
                         class="w-10 h-10 rounded-full bg-white hover:bg-zinc-200 text-black flex items-center justify-center transition hover:scale-105 active:scale-95">
@@ -489,7 +523,6 @@
                     </div>
                 </div>
 
-                <!-- 中：快捷键提示 -->
                 <div class="hidden lg:flex items-center gap-4 text-[11px] text-zinc-400 font-mono">
                     <span>[Space] 播放</span>
                     <span>[A/D] ±5s</span>
@@ -497,7 +530,6 @@
                     <span>[F] 全屏</span>
                 </div>
 
-                <!-- 右：倍速/音量/全屏 -->
                 <div class="flex items-center gap-3">
                     <button id="btn-speed" onclick="cyclePlaybackRate()" title="倍速"
                         class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 font-mono text-xs font-semibold text-white transition active:scale-95">
@@ -521,7 +553,6 @@
             </div>
         </div>
 
-        <!-- 右侧滑出式选集抽屉 -->
         <aside id="player-drawer"
             class="translate-x-full absolute top-0 right-0 bottom-0 w-80 sm:w-96 z-40 bg-nf-surface/95 backdrop-blur-2xl border-l border-white/10 flex flex-col transition-transform duration-300 ease-out shadow-2xl">
             <div class="p-4 border-b border-white/10 flex items-center justify-between">
@@ -534,9 +565,7 @@
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
-            <div id="drawer-list-container" class="flex-1 overflow-y-auto p-3 space-y-2">
-                <!-- 动态注入 -->
-            </div>
+            <div id="drawer-list-container" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
         </aside>
     </div>
 
@@ -545,16 +574,17 @@
 
         let playlist = [];
         let currentVideoIndex = -1;
-        let currentCategory = 'ALL';
+        let selectedCategories = new Set(); // 支持多选分类标签（空集合代表全部）
         let featuredIndex = 0;
         let toastTimeout = null;
         let idleTimeout = null;
         let lastVolume = 1;
         let drawerOpen = false;
+        let appendMode = false;
+        let pendingGroups = []; // 待用户多选确认的子文件夹分组
         const speedRates = [0.75, 1.0, 1.25, 1.5, 2.0];
         let speedIdx = 1;
 
-        // DOM 引用
         const welcomeScreen = document.getElementById('welcome-screen');
         const wallScreen = document.getElementById('wall-screen');
         const wallNavbar = document.getElementById('wall-navbar');
@@ -562,6 +592,11 @@
         const playerOverlay = document.getElementById('player-overlay');
         const playerDrawer = document.getElementById('player-drawer');
         const drawerListContainer = document.getElementById('drawer-list-container');
+
+        const folderSelectModal = document.getElementById('folder-select-modal');
+        const modalFolderList = document.getElementById('modal-folder-list');
+        const modalSummary = document.getElementById('modal-summary');
+        const btnConfirmFolders = document.getElementById('btn-confirm-folders');
 
         const folderInput = document.getElementById('folderInput');
         const fileInput = document.getElementById('fileInput');
@@ -575,14 +610,12 @@
         const videoCount = document.getElementById('video-count');
         const totalSizeEl = document.getElementById('total-size');
 
-        // Hero Banner DOM
         const heroBgImg = document.getElementById('hero-bg-img');
         const heroFolderTag = document.getElementById('hero-folder-tag');
         const heroTitle = document.getElementById('hero-title');
         const heroSize = document.getElementById('hero-size');
         const heroDuration = document.getElementById('hero-duration');
 
-        // Player DOM
         const videoPlayer = document.getElementById('video-player');
         const playingTitle = document.getElementById('playing-title');
         const statusIndicator = document.getElementById('status-indicator');
@@ -608,7 +641,6 @@
         setWrapIcon(volumeIconWrap, 'volume-2', 'w-5 h-5');
         setWrapIcon(fullscreenIconWrap, 'maximize', 'w-5 h-5');
 
-        // 滚动海报墙时顶部导航栏渐变实色
         wallScrollContainer.addEventListener('scroll', () => {
             if (wallScrollContainer.scrollTop > 30) {
                 wallNavbar.classList.add('bg-nf-bg/95', 'backdrop-blur-md', 'border-b', 'border-white/10');
@@ -623,8 +655,15 @@
             wallScrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // === 优先使用 showDirectoryPicker，startIn:"desktop" 防止记忆目录路径 ===
-        async function openDirectoryPicker() {
+        function triggerFileInput(isAppend = false) {
+            appendMode = isAppend;
+            fileInput.value = '';
+            fileInput.click();
+        }
+
+        // === 选择目录（支持首次选择 & 追加目录） ===
+        async function openDirectoryPicker(isAppend = false) {
+            appendMode = isAppend;
             if ('showDirectoryPicker' in window) {
                 try {
                     const dirHandle = await window.showDirectoryPicker({ startIn: "desktop" });
@@ -648,6 +687,7 @@
                     if (err.name !== 'AbortError') console.error(err);
                 }
             } else {
+                folderInput.value = '';
                 folderInput.click();
             }
         }
@@ -663,6 +703,7 @@
         dropZone.addEventListener('drop', async (e) => {
             e.preventDefault();
             dropZone.classList.remove('border-nf-red', 'scale-[1.01]');
+            appendMode = false;
             if ('getAsFileSystemHandle' in DataTransferItem.prototype && e.dataTransfer.items.length) {
                 const item = e.dataTransfer.items[0];
                 const handle = await item.getAsFileSystemHandle();
@@ -690,7 +731,6 @@
         folderInput.addEventListener('change', (e) => processFiles(e.target.files));
         fileInput.addEventListener('change', (e) => processFiles(e.target.files));
 
-        // 界面切换
         function showWallScreen() {
             welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
             wallScreen.classList.remove('hidden');
@@ -711,11 +751,11 @@
                 wallScreen.classList.add('hidden');
                 playlist = [];
                 currentVideoIndex = -1;
-                currentCategory = 'ALL';
+                selectedCategories.clear();
             }, 400);
         }
 
-        // 解析文件与子目录归类
+        // ======================== 核心修改：按子目录分组并支持多选弹窗 ========================
         function processFiles(files) {
             const validExtensions = ['.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v'];
             const filtered = Array.from(files)
@@ -725,42 +765,152 @@
                 })
                 .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { numeric: true }));
 
-            playlist = filtered.map((file, idx) => {
-                const rel = file.webkitRelativePath || '';
-                const parts = rel.split('/').filter(Boolean);
-                let folder = '本地影片';
-                if (parts.length === 2) folder = '根目录';
-                else if (parts.length > 2) folder = parts.slice(1, -1).join(' / ');
-
-                return {
-                    id: idx,
-                    file: file,
-                    name: file.name,
-                    folder: folder,
-                    size: formatBytes(file.size),
-                    rawSize: file.size,
-                    duration: null,
-                    thumbnail: null
-                };
-            });
-
-            if (playlist.length === 0) {
+            if (filtered.length === 0) {
                 alert('该目录下未找到支持的视频文件！');
                 return;
             }
 
-            const samplePath = filtered[0].webkitRelativePath;
-            workspacePath.textContent = samplePath ? samplePath.split('/')[0] : '本地片库';
+            // 提取子文件夹路径并分组
+            const groupMap = new Map();
+            let rootName = '本地片库';
+
+            filtered.forEach(file => {
+                const rel = file.webkitRelativePath || '';
+                const parts = rel.split('/').filter(Boolean);
+                let folder = '本地影片';
+                if (parts.length >= 2) {
+                    rootName = parts[0];
+                    folder = parts.length === 2 ? '根目录' : parts.slice(1, -1).join(' / ');
+                }
+                if (!groupMap.has(folder)) groupMap.set(folder, []);
+                groupMap.get(folder).push({ file, folder, rootName });
+            });
+
+            // 如果包含多个子文件夹，弹出多选确认窗口（排除不想载入的文件夹）
+            if (groupMap.size > 1) {
+                pendingGroups = Array.from(groupMap.entries()).map(([folderName, items]) => ({
+                    folderName,
+                    items,
+                    totalSize: items.reduce((s, x) => s + x.file.size, 0),
+                    checked: true
+                }));
+                openFolderSelectModal();
+            } else {
+                // 只有一个文件夹时直接载入
+                const singleItems = Array.from(groupMap.values())[0];
+                commitItemsToPlaylist(singleItems, rootName);
+            }
+        }
+
+        function openFolderSelectModal() {
+            renderModalFolderList();
+            folderSelectModal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function cancelFolderModal() {
+            folderSelectModal.classList.add('hidden');
+            pendingGroups = [];
+        }
+
+        function toggleAllModalFolders(state) {
+            pendingGroups.forEach(g => g.checked = state);
+            renderModalFolderList();
+        }
+
+        function renderModalFolderList() {
+            modalFolderList.innerHTML = '';
+            let checkedFolders = 0;
+            let checkedVideos = 0;
+
+            pendingGroups.forEach((group, idx) => {
+                if (group.checked) {
+                    checkedFolders++;
+                    checkedVideos += group.items.length;
+                }
+
+                const row = document.createElement('label');
+                row.className = `flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${group.checked
+                        ? 'bg-nf-red/15 border-nf-red/60 text-white'
+                        : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:bg-white/[0.06]'
+                    }`;
+
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                        <input type="checkbox" ${group.checked ? 'checked' : ''}
+                            class="w-4 h-4 accent-[#E50914] rounded cursor-pointer flex-shrink-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <i data-lucide="folder" class="w-4 h-4 ${group.checked ? 'text-nf-red' : 'text-zinc-500'} flex-shrink-0"></i>
+                            <span class="text-sm font-medium truncate">${group.folderName}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2.5 text-xs font-mono flex-shrink-0 ml-3">
+                        <span class="px-2 py-0.5 rounded bg-black/40">${group.items.length} 部</span>
+                        <span class="text-zinc-400 w-16 text-right">${formatBytes(group.totalSize)}</span>
+                    </div>
+                `;
+
+                const checkbox = row.querySelector('input');
+                checkbox.addEventListener('change', (e) => {
+                    pendingGroups[idx].checked = e.target.checked;
+                    renderModalFolderList();
+                });
+
+                modalFolderList.appendChild(row);
+            });
+
+            modalSummary.textContent = `已选 ${checkedFolders} 个文件夹 (${checkedVideos} 部视频)`;
+            btnConfirmFolders.disabled = checkedVideos === 0;
+            lucide.createIcons();
+        }
+
+        function confirmFolderModal() {
+            const chosenItems = [];
+            let rootName = '本地片库';
+            pendingGroups.forEach(g => {
+                if (g.checked) {
+                    g.items.forEach(item => {
+                        rootName = item.rootName || rootName;
+                        chosenItems.push(item);
+                    });
+                }
+            });
+            folderSelectModal.classList.add('hidden');
+            pendingGroups = [];
+            commitItemsToPlaylist(chosenItems, rootName);
+        }
+
+        function commitItemsToPlaylist(items, rootName) {
+            const startId = appendMode ? playlist.length : 0;
+            const newEntries = items.map((entry, idx) => ({
+                id: startId + idx,
+                file: entry.file,
+                name: entry.file.name,
+                folder: entry.folder === '根目录' && appendMode ? rootName : entry.folder,
+                size: formatBytes(entry.file.size),
+                rawSize: entry.file.size,
+                duration: null,
+                thumbnail: null
+            }));
+
+            if (appendMode) {
+                playlist = playlist.concat(newEntries);
+                workspacePath.textContent = `${workspacePath.textContent} + ${rootName}`;
+            } else {
+                playlist = newEntries;
+                selectedCategories.clear();
+                featuredIndex = 0;
+                workspacePath.textContent = rootName;
+                updateHeroBanner(playlist[0]);
+            }
+
             const totalBytes = playlist.reduce((sum, item) => sum + item.rawSize, 0);
             totalSizeEl.textContent = `总计 ${formatBytes(totalBytes)}`;
 
-            currentCategory = 'ALL';
-            featuredIndex = 0;
-            updateHeroBanner(playlist[0]);
             renderCategoryPills();
             renderPosterGrid(getFilteredPlaylist());
-            showWallScreen();
-            generateThumbnails();
+            if (!appendMode) showWallScreen();
+            generateThumbnails(newEntries);
         }
 
         function updateHeroBanner(item) {
@@ -788,25 +938,38 @@
             openPlayerWithVideo(randItem.id);
         }
 
-        // 渲染子目录分类胶囊
+        // 渲染支持多选的子目录分类胶囊
         function renderCategoryPills() {
             const folders = [...new Set(playlist.map(item => item.folder))];
             if (folders.length <= 1) {
                 categoryPills.innerHTML = '';
                 return;
             }
-            const allCats = ['ALL', ...folders];
             categoryPills.innerHTML = '';
-            allCats.forEach(cat => {
-                const active = cat === currentCategory;
+
+            // “全部”按钮
+            const isAll = selectedCategories.size === 0;
+            const allBtn = document.createElement('button');
+            allBtn.textContent = '全部';
+            allBtn.className = `px-3 py-1 rounded-full text-xs font-medium transition-all ${isAll ? 'bg-white text-black font-bold' : 'bg-white/10 text-zinc-300 hover:bg-white/20'
+                }`;
+            allBtn.onclick = () => {
+                selectedCategories.clear();
+                renderCategoryPills();
+                renderPosterGrid(getFilteredPlaylist());
+            };
+            categoryPills.appendChild(allBtn);
+
+            // 各个文件夹多选标签
+            folders.forEach(cat => {
+                const active = selectedCategories.has(cat);
                 const btn = document.createElement('button');
-                btn.textContent = cat === 'ALL' ? '全部' : cat;
-                btn.className = `px-3 py-1 rounded-full text-xs font-medium transition-all ${active
-                    ? 'bg-white text-black font-bold'
-                    : 'bg-white/10 text-zinc-300 hover:bg-white/20'
+                btn.textContent = cat;
+                btn.className = `px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${active ? 'bg-nf-red text-white font-bold shadow-md shadow-nf-red/30' : 'bg-white/10 text-zinc-300 hover:bg-white/20'
                     }`;
                 btn.onclick = () => {
-                    currentCategory = cat;
+                    if (selectedCategories.has(cat)) selectedCategories.delete(cat);
+                    else selectedCategories.add(cat);
                     renderCategoryPills();
                     renderPosterGrid(getFilteredPlaylist());
                 };
@@ -817,13 +980,12 @@
         function getFilteredPlaylist() {
             const kw = searchInput.value.trim().toLowerCase();
             return playlist.filter(item => {
-                const matchCat = currentCategory === 'ALL' || item.folder === currentCategory;
+                const matchCat = selectedCategories.size === 0 || selectedCategories.has(item.folder);
                 const matchKw = !kw || item.name.toLowerCase().includes(kw);
                 return matchCat && matchKw;
             });
         }
 
-        // 渲染海报墙网格
         function renderPosterGrid(list) {
             videoCount.textContent = `${list.length} 部`;
             posterGrid.innerHTML = '';
@@ -852,14 +1014,12 @@
                     }
                         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent opacity-80 group-hover:opacity-95 transition-opacity"></div>
 
-                        <!-- 悬停中心播放按钮 -->
                         <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
                             <div class="w-12 h-12 rounded-full bg-nf-red/95 text-white flex items-center justify-center shadow-xl">
                                 <i data-lucide="play" class="w-5 h-5 fill-current ml-0.5"></i>
                             </div>
                         </div>
 
-                        <!-- 时长角标 -->
                         ${item.duration ? `<span class="duration-badge absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-white">${item.duration}</span>` : ''}
                         <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/65 backdrop-blur-sm text-[10px] text-zinc-300 border border-white/10 max-w-[70%] truncate">${item.folder}</span>
                     </div>
@@ -929,7 +1089,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="text-xs font-medium ${isCurrent ? 'text-white' : 'text-zinc-300'} truncate">${item.name}</div>
-                        <div class="text-[10px] font-mono text-zinc-500 mt-1">${item.size} ${isCurrent ? '· 正在播放' : ''}</div>
+                        <div class="text-[10px] font-mono text-zinc-500 mt-1">${item.folder} · ${item.size}</div>
                     </div>
                 `;
                 row.onclick = () => {
@@ -1065,7 +1225,6 @@
             showHUD(delta > 0 ? 'fast-forward' : 'rewind', `${delta > 0 ? '+5s' : '-5s'}`);
         }
 
-        // 快捷键
         window.addEventListener('keydown', (e) => {
             if (playerOverlay.classList.contains('hidden')) return;
             if (e.target === searchInput) return;
@@ -1171,7 +1330,6 @@
             setWrapIcon(fullscreenIconWrap, document.fullscreenElement ? 'minimize' : 'maximize', 'w-5 h-5');
         });
 
-        // 搜索
         function clearSearch() {
             searchInput.value = '';
             btnClearSearch.classList.add('hidden');
@@ -1183,7 +1341,6 @@
             renderPosterGrid(getFilteredPlaylist());
         });
 
-        // 工具函数
         function formatBytes(bytes) {
             if (!bytes) return '0 B';
             const k = 1024, sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -1208,21 +1365,18 @@
             return [m, s].map(v => v < 10 ? "0" + v : v).join(":");
         }
 
-        // 异步生成海报封面与时长
-        async function generateThumbnails() {
-            for (let item of playlist) {
+        async function generateThumbnails(targetItems = playlist) {
+            for (let item of targetItems) {
                 if (playlist.length === 0) break;
                 try {
                     const { thumb, duration } = await captureVideoFrame(item.file);
                     item.thumbnail = thumb;
                     item.duration = duration;
 
-                    // 同步更新顶部推荐巨幕封面
                     if (item.id === featuredIndex) {
                         updateHeroBanner(item);
                     }
 
-                    // 局部更新对应海报卡片，避免网格重绘闪烁
                     const card = posterGrid.querySelector(`[data-video-id="${item.id}"]`);
                     if (card) {
                         const imgBox = card.querySelector('.aspect-video');
