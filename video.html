@@ -97,6 +97,26 @@
             animation: fadeSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
         }
 
+        /* 扫描进度条流光动画 */
+        @keyframes progressShimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(200%);
+            }
+        }
+
+        .progress-shimmer::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            width: 50%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+            animation: progressShimmer 1.2s ease-in-out infinite;
+        }
+
         input[type="range"].nf-slider {
             -webkit-appearance: none;
             appearance: none;
@@ -174,7 +194,6 @@
     <div id="welcome-screen"
         class="fixed inset-0 z-40 flex flex-col justify-between bg-nf-bg overflow-hidden transition-all duration-500">
 
-        <!-- 背景斜向虚拟海报矩阵 -->
         <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-25">
             <div class="poster-wall-bg grid grid-cols-4 sm:grid-cols-6 gap-4 p-6">
                 <div class="aspect-video rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/5">
@@ -228,7 +247,6 @@
             class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,20,20,0.65)_0%,#141414_78%)]">
         </div>
 
-        <!-- 顶栏 -->
         <header class="relative z-10 px-6 sm:px-12 h-20 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="text-2xl font-black tracking-tighter text-nf-red">NETSTREAM</span>
@@ -243,7 +261,6 @@
             </div>
         </header>
 
-        <!-- 中央主卡片 -->
         <main class="relative z-10 flex-1 flex items-center justify-center px-6">
             <div id="drop-zone"
                 class="w-full max-w-2xl text-center p-8 sm:p-12 rounded-2xl bg-black/70 backdrop-blur-xl border border-white/10 hover:border-nf-red/70 transition-all duration-300 shadow-[0_30px_90px_rgba(0,0,0,0.85)]">
@@ -251,7 +268,7 @@
                 <div
                     class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-nf-red/15 border border-nf-red/30 text-nf-red text-xs font-semibold mb-5">
                     <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-                    <span>本地硬件解码 · 支持子目录多选过滤</span>
+                    <span>秒开子目录多选 · 极速扫描过滤</span>
                 </div>
 
                 <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white mb-4 leading-tight">
@@ -259,7 +276,7 @@
                 </h1>
 
                 <p class="text-sm sm:text-base text-nf-muted max-w-lg mx-auto mb-8">
-                    将视频文件夹拖入此处或点击按钮载入。若目录内包含多个子文件夹，可自由勾选需要导入的目录。
+                    将视频文件夹拖入此处或点击按钮载入。若目录内包含多个子文件夹，会先秒开目录勾选窗，仅解析你选中的文件夹。
                 </p>
 
                 <div class="flex flex-wrap items-center justify-center gap-3.5">
@@ -289,19 +306,18 @@
         <input type="file" id="fileInput" accept="video/*" multiple class="hidden">
     </div>
 
-    <!-- ======================== 新增：子文件夹多选弹窗 ======================== -->
+    <!-- ======================== 子文件夹多选弹窗 ======================== -->
     <div id="folder-select-modal"
         class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
         <div
             class="w-full max-w-lg rounded-xl bg-nf-surface border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[82vh]">
-            <!-- 弹窗头 -->
             <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="w-1.5 h-4 rounded-full bg-nf-red"></span>
                         <h3 class="text-base font-bold text-white">选择要载入的子文件夹</h3>
                     </div>
-                    <p class="text-xs text-nf-muted mt-1">仅勾选的文件夹会被导入海报墙，未勾选的将被忽略</p>
+                    <p class="text-xs text-nf-muted mt-1">仅勾选的目录会被深度扫描，未勾选的不会读取</p>
                 </div>
                 <button onclick="cancelFolderModal()"
                     class="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white">
@@ -309,9 +325,8 @@
                 </button>
             </div>
 
-            <!-- 快捷操作栏 -->
             <div class="px-5 py-2.5 bg-black/30 border-b border-white/10 flex items-center justify-between text-xs">
-                <span id="modal-summary" class="text-zinc-300 font-mono">已选 0 个文件夹 (0 部)</span>
+                <span id="modal-summary" class="text-zinc-300 font-mono">已选 0 个文件夹</span>
                 <div class="flex items-center gap-2">
                     <button onclick="toggleAllModalFolders(true)"
                         class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition">全选</button>
@@ -320,12 +335,8 @@
                 </div>
             </div>
 
-            <!-- 文件夹勾选列表 -->
-            <div id="modal-folder-list" class="flex-1 overflow-y-auto p-3 space-y-2">
-                <!-- 动态注入 -->
-            </div>
+            <div id="modal-folder-list" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
 
-            <!-- 底部确认按钮 -->
             <div class="px-5 py-3.5 border-t border-white/10 bg-black/40 flex items-center justify-end gap-3">
                 <button onclick="cancelFolderModal()"
                     class="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition">
@@ -333,7 +344,43 @@
                 </button>
                 <button id="btn-confirm-folders" onclick="confirmFolderModal()"
                     class="px-5 py-2 rounded-md bg-nf-red hover:bg-nf-redHover disabled:opacity-40 disabled:pointer-events-none text-xs font-bold text-white transition">
-                    确认载入
+                    开始扫描载入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== 新增：扫描加载进度条弹窗 ======================== -->
+    <div id="scan-loading-modal"
+        class="hidden fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div
+            class="w-full max-w-md rounded-xl bg-nf-surface border border-white/15 p-6 shadow-[0_25px_70px_rgba(0,0,0,0.95)]">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div
+                        class="w-8 h-8 rounded-full bg-nf-red/20 border border-nf-red/40 flex items-center justify-center text-nf-red">
+                        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">正在扫描本地视频库</h3>
+                        <p id="scan-status-text" class="text-[11px] text-zinc-400 truncate max-w-[230px]">准备扫描...</p>
+                    </div>
+                </div>
+                <span id="scan-percent-text" class="text-sm font-mono font-bold text-nf-red">0%</span>
+            </div>
+
+            <!-- 进度条轨道 -->
+            <div class="w-full h-2.5 bg-white/10 rounded-full overflow-hidden mb-3 relative">
+                <div id="scan-progress-fill"
+                    class="h-full w-0 bg-gradient-to-r from-nf-red to-[#ff5e5e] rounded-full transition-all duration-200 relative overflow-hidden progress-shimmer">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-zinc-400 font-mono">
+                <span id="scan-count-text">已发现 0 部视频</span>
+                <button onclick="abortScan()"
+                    class="text-xs font-sans text-zinc-300 hover:text-white underline underline-offset-2">
+                    取消扫描
                 </button>
             </div>
         </div>
@@ -343,7 +390,6 @@
     <div id="wall-screen"
         class="hidden opacity-0 h-full flex flex-col bg-nf-bg overflow-hidden transition-opacity duration-400">
 
-        <!-- 顶部吸顶导航栏 -->
         <nav id="wall-navbar"
             class="fixed top-0 left-0 right-0 z-30 h-16 px-5 sm:px-10 flex items-center justify-between transition-colors duration-300 bg-gradient-to-b from-black/85 to-transparent">
             <div class="flex items-center gap-5 min-w-0">
@@ -358,7 +404,6 @@
             </div>
 
             <div class="flex items-center gap-2.5">
-                <!-- 搜索框 -->
                 <div class="relative w-36 sm:w-56">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-zinc-400"></i>
                     <input type="text" id="search-input" placeholder="搜索片名..."
@@ -369,7 +414,6 @@
                     </button>
                 </div>
 
-                <!-- 新增：追加目录按钮 -->
                 <button onclick="openDirectoryPicker(true)" title="再添加一个文件夹到当前片库"
                     class="px-3 py-1.5 rounded-md bg-nf-red/90 hover:bg-nf-red text-xs font-semibold text-white flex items-center gap-1.5 transition active:scale-95 flex-shrink-0">
                     <i data-lucide="folder-plus" class="w-3.5 h-3.5"></i>
@@ -384,10 +428,7 @@
             </div>
         </nav>
 
-        <!-- 海报墙主滚动容器 -->
         <div id="wall-scroll-container" class="flex-1 overflow-y-auto scroll-smooth">
-
-            <!-- 顶部巨幕推荐横幅 -->
             <section id="hero-banner"
                 class="relative w-full h-[54vh] min-h-[380px] max-h-[540px] flex items-end overflow-hidden bg-zinc-950">
                 <img id="hero-bg-img" src="" alt=""
@@ -431,7 +472,6 @@
                 </div>
             </section>
 
-            <!-- 分类多选筛选栏 + 海报网格 -->
             <section class="relative z-10 px-5 sm:px-10 pb-16 -mt-2">
                 <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
                     <div class="flex items-center gap-3">
@@ -441,7 +481,6 @@
                         <span id="total-size" class="text-xs font-mono text-zinc-500 hidden sm:inline">总计 0 MB</span>
                     </div>
 
-                    <!-- 支持多选的目录分类胶囊 -->
                     <div id="category-pills" class="flex flex-wrap items-center gap-2"></div>
                 </div>
 
@@ -572,16 +611,25 @@
     <script>
         lucide.createIcons();
 
+        const VIDEO_EXTS = ['.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v'];
+        function isVideoFileName(name) {
+            const dot = name.lastIndexOf('.');
+            if (dot === -1) return false;
+            return VIDEO_EXTS.includes(name.slice(dot).toLowerCase());
+        }
+
         let playlist = [];
         let currentVideoIndex = -1;
-        let selectedCategories = new Set(); // 支持多选分类标签（空集合代表全部）
+        let selectedCategories = new Set();
         let featuredIndex = 0;
         let toastTimeout = null;
         let idleTimeout = null;
         let lastVolume = 1;
         let drawerOpen = false;
         let appendMode = false;
-        let pendingGroups = []; // 待用户多选确认的子文件夹分组
+        let pendingGroups = []; // { folderName, type: 'handle'|'files', handle?, handles?, items?, checked }
+        let pendingRootName = '本地片库';
+        let scanAborted = false;
         const speedRates = [0.75, 1.0, 1.25, 1.5, 2.0];
         let speedIdx = 1;
 
@@ -597,6 +645,12 @@
         const modalFolderList = document.getElementById('modal-folder-list');
         const modalSummary = document.getElementById('modal-summary');
         const btnConfirmFolders = document.getElementById('btn-confirm-folders');
+
+        const scanLoadingModal = document.getElementById('scan-loading-modal');
+        const scanStatusText = document.getElementById('scan-status-text');
+        const scanPercentText = document.getElementById('scan-percent-text');
+        const scanProgressFill = document.getElementById('scan-progress-fill');
+        const scanCountText = document.getElementById('scan-count-text');
 
         const folderInput = document.getElementById('folderInput');
         const fileInput = document.getElementById('fileInput');
@@ -661,34 +715,75 @@
             fileInput.click();
         }
 
-        // === 选择目录（支持首次选择 & 追加目录） ===
+        // ======================== 阶段 1：秒读一级目录 ========================
         async function openDirectoryPicker(isAppend = false) {
             appendMode = isAppend;
             if ('showDirectoryPicker' in window) {
                 try {
                     const dirHandle = await window.showDirectoryPicker({ startIn: "desktop" });
-                    const files = [];
-                    async function readDirectory(handle, prefix = dirHandle.name) {
-                        for await (const entry of handle.values()) {
-                            if (entry.kind === 'file') {
-                                const fileObj = await entry.getFile();
-                                Object.defineProperty(fileObj, 'webkitRelativePath', {
-                                    value: `${prefix}/${entry.name}`
-                                });
-                                files.push(fileObj);
-                            } else if (entry.kind === 'directory') {
-                                await readDirectory(entry, `${prefix}/${entry.name}`);
-                            }
-                        }
-                    }
-                    await readDirectory(dirHandle);
-                    processFiles(files);
+                    await inspectRootDirectoryHandle(dirHandle);
                 } catch (err) {
-                    if (err.name !== 'AbortError') console.error(err);
+                    if (err.name !== 'AbortError') {
+                        console.error(err);
+                        alert('读取该目录失败，请检查文件夹权限。');
+                    }
                 }
             } else {
                 folderInput.value = '';
                 folderInput.click();
+            }
+        }
+
+        // 仅扫描第一层（毫秒级完成），决定直接载入还是弹出多选窗
+        async function inspectRootDirectoryHandle(dirHandle) {
+            pendingRootName = dirHandle.name;
+            const topSubdirs = [];
+            const rootFileHandles = [];
+
+            try {
+                for await (const entry of dirHandle.values()) {
+                    if (entry.name.startsWith('$') || entry.name === 'System Volume Information') continue;
+                    if (entry.kind === 'directory') {
+                        topSubdirs.push({ name: entry.name, handle: entry });
+                    } else if (entry.kind === 'file' && isVideoFileName(entry.name)) {
+                        rootFileHandles.push({ name: entry.name, handle: entry });
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                alert('无法访问该文件夹，请重试。');
+                return;
+            }
+
+            topSubdirs.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { numeric: true }));
+
+            if (topSubdirs.length > 0) {
+                pendingGroups = [];
+                if (rootFileHandles.length > 0) {
+                    pendingGroups.push({
+                        folderName: '根目录',
+                        type: 'rootHandles',
+                        handles: rootFileHandles,
+                        checked: true
+                    });
+                }
+                topSubdirs.forEach(dir => {
+                    pendingGroups.push({
+                        folderName: dir.name,
+                        type: 'dirHandle',
+                        handle: dir.handle,
+                        checked: true
+                    });
+                });
+                openFolderSelectModal();
+            } else if (rootFileHandles.length > 0) {
+                await scanSelectedGroups([{
+                    folderName: '根目录',
+                    type: 'rootHandles',
+                    handles: rootFileHandles
+                }]);
+            } else {
+                alert('该目录下未找到支持的视频文件！');
             }
         }
 
@@ -708,100 +803,57 @@
                 const item = e.dataTransfer.items[0];
                 const handle = await item.getAsFileSystemHandle();
                 if (handle && handle.kind === "directory") {
-                    const files = [];
-                    async function readDirectory(hd, prefix = hd.name) {
-                        for await (const entry of hd.values()) {
-                            if (entry.kind === 'file') {
-                                const f = await entry.getFile();
-                                Object.defineProperty(f, 'webkitRelativePath', { value: `${prefix}/${entry.name}` });
-                                files.push(f);
-                            } else if (entry.kind === 'directory') {
-                                await readDirectory(entry, `${prefix}/${entry.name}`);
-                            }
-                        }
-                    }
-                    await readDirectory(handle);
-                    processFiles(files);
+                    await inspectRootDirectoryHandle(handle);
                     return;
                 }
             }
-            if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
+            if (e.dataTransfer.files.length) processFallbackFiles(e.dataTransfer.files);
         });
 
-        folderInput.addEventListener('change', (e) => processFiles(e.target.files));
-        fileInput.addEventListener('change', (e) => processFiles(e.target.files));
+        folderInput.addEventListener('change', (e) => processFallbackFiles(e.target.files));
+        fileInput.addEventListener('change', (e) => processFallbackFiles(e.target.files));
 
-        function showWallScreen() {
-            welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
-            wallScreen.classList.remove('hidden');
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => wallScreen.classList.remove('opacity-0'));
-            });
-            setTimeout(() => welcomeScreen.classList.add('hidden'), 450);
-        }
-
-        function switchFolder() {
-            closePlayerToWall();
-            wallScreen.classList.add('opacity-0');
-            welcomeScreen.classList.remove('hidden');
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => welcomeScreen.classList.remove('opacity-0', 'pointer-events-none'));
-            });
-            setTimeout(() => {
-                wallScreen.classList.add('hidden');
-                playlist = [];
-                currentVideoIndex = -1;
-                selectedCategories.clear();
-            }, 400);
-        }
-
-        // ======================== 核心修改：按子目录分组并支持多选弹窗 ========================
-        function processFiles(files) {
-            const validExtensions = ['.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v'];
+        // 兼容 Firefox/Safari 及单文件选择
+        function processFallbackFiles(files) {
             const filtered = Array.from(files)
-                .filter(file => {
-                    const ext = '.' + file.name.split('.').pop().toLowerCase();
-                    return validExtensions.includes(ext) || file.type.startsWith('video/');
-                })
+                .filter(file => isVideoFileName(file.name) || file.type.startsWith('video/'))
                 .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { numeric: true }));
 
             if (filtered.length === 0) {
-                alert('该目录下未找到支持的视频文件！');
+                alert('未找到支持的视频文件！');
                 return;
             }
 
-            // 提取子文件夹路径并分组
             const groupMap = new Map();
             let rootName = '本地片库';
-
             filtered.forEach(file => {
                 const rel = file.webkitRelativePath || '';
                 const parts = rel.split('/').filter(Boolean);
                 let folder = '本地影片';
                 if (parts.length >= 2) {
                     rootName = parts[0];
-                    folder = parts.length === 2 ? '根目录' : parts.slice(1, -1).join(' / ');
+                    folder = parts.length === 2 ? '根目录' : parts[1];
                 }
                 if (!groupMap.has(folder)) groupMap.set(folder, []);
-                groupMap.get(folder).push({ file, folder, rootName });
+                groupMap.get(folder).push({ file, folder });
             });
 
-            // 如果包含多个子文件夹，弹出多选确认窗口（排除不想载入的文件夹）
+            pendingRootName = rootName;
             if (groupMap.size > 1) {
                 pendingGroups = Array.from(groupMap.entries()).map(([folderName, items]) => ({
                     folderName,
+                    type: 'files',
                     items,
-                    totalSize: items.reduce((s, x) => s + x.file.size, 0),
                     checked: true
                 }));
                 openFolderSelectModal();
             } else {
-                // 只有一个文件夹时直接载入
-                const singleItems = Array.from(groupMap.values())[0];
-                commitItemsToPlaylist(singleItems, rootName);
+                const items = Array.from(groupMap.values())[0];
+                commitItemsToPlaylist(items, rootName);
             }
         }
 
+        // ======================== 多选文件夹弹窗 ========================
         function openFolderSelectModal() {
             renderModalFolderList();
             folderSelectModal.classList.remove('hidden');
@@ -821,18 +873,17 @@
         function renderModalFolderList() {
             modalFolderList.innerHTML = '';
             let checkedFolders = 0;
-            let checkedVideos = 0;
 
             pendingGroups.forEach((group, idx) => {
-                if (group.checked) {
-                    checkedFolders++;
-                    checkedVideos += group.items.length;
-                }
+                if (group.checked) checkedFolders++;
+                const countBadge = group.type === 'rootHandles'
+                    ? `${group.handles.length} 部`
+                    : (group.type === 'files' ? `${group.items.length} 部` : '子文件夹');
 
                 const row = document.createElement('label');
                 row.className = `flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${group.checked
-                        ? 'bg-nf-red/15 border-nf-red/60 text-white'
-                        : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:bg-white/[0.06]'
+                    ? 'bg-nf-red/15 border-nf-red/60 text-white'
+                    : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:bg-white/[0.06]'
                     }`;
 
                 row.innerHTML = `
@@ -844,14 +895,10 @@
                             <span class="text-sm font-medium truncate">${group.folderName}</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2.5 text-xs font-mono flex-shrink-0 ml-3">
-                        <span class="px-2 py-0.5 rounded bg-black/40">${group.items.length} 部</span>
-                        <span class="text-zinc-400 w-16 text-right">${formatBytes(group.totalSize)}</span>
-                    </div>
+                    <span class="text-xs font-mono px-2 py-0.5 rounded bg-black/40 text-zinc-300 flex-shrink-0 ml-3">${countBadge}</span>
                 `;
 
-                const checkbox = row.querySelector('input');
-                checkbox.addEventListener('change', (e) => {
+                row.querySelector('input').addEventListener('change', (e) => {
                     pendingGroups[idx].checked = e.target.checked;
                     renderModalFolderList();
                 });
@@ -859,27 +906,118 @@
                 modalFolderList.appendChild(row);
             });
 
-            modalSummary.textContent = `已选 ${checkedFolders} 个文件夹 (${checkedVideos} 部视频)`;
-            btnConfirmFolders.disabled = checkedVideos === 0;
+            modalSummary.textContent = `已选 ${checkedFolders} / ${pendingGroups.length} 个目录`;
+            btnConfirmFolders.disabled = checkedFolders === 0;
             lucide.createIcons();
         }
 
-        function confirmFolderModal() {
-            const chosenItems = [];
-            let rootName = '本地片库';
-            pendingGroups.forEach(g => {
-                if (g.checked) {
-                    g.items.forEach(item => {
-                        rootName = item.rootName || rootName;
-                        chosenItems.push(item);
-                    });
-                }
-            });
+        async function confirmFolderModal() {
+            const chosen = pendingGroups.filter(g => g.checked);
             folderSelectModal.classList.add('hidden');
             pendingGroups = [];
-            commitItemsToPlaylist(chosenItems, rootName);
+
+            if (chosen.length === 0) return;
+            if (chosen[0].type === 'files') {
+                const items = chosen.flatMap(g => g.items);
+                commitItemsToPlaylist(items, pendingRootName);
+            } else {
+                await scanSelectedGroups(chosen);
+            }
         }
 
+        // ======================== 阶段 2：带进度条的极速深度扫描 ========================
+        function updateScanUI(percent, status, count) {
+            const pct = Math.min(100, Math.max(0, Math.round(percent)));
+            scanProgressFill.style.width = `${pct}%`;
+            scanPercentText.textContent = `${pct}%`;
+            if (status) scanStatusText.textContent = status;
+            scanCountText.textContent = `已发现 ${count} 部视频`;
+        }
+
+        function abortScan() {
+            scanAborted = true;
+            scanLoadingModal.classList.add('hidden');
+        }
+
+        async function scanSelectedGroups(groups) {
+            scanAborted = false;
+            scanLoadingModal.classList.remove('hidden');
+            lucide.createIcons();
+            updateScanUI(5, '正在初始化扫描...', 0);
+
+            const collectedItems = [];
+            const totalGroups = groups.length;
+
+            for (let gIdx = 0; gIdx < totalGroups; gIdx++) {
+                if (scanAborted) return;
+                const group = groups[gIdx];
+                const basePct = (gIdx / totalGroups) * 90 + 5;
+                const nextPct = ((gIdx + 1) / totalGroups) * 90 + 5;
+                updateScanUI(basePct, `正在扫描: ${group.folderName}`, collectedItems.length);
+
+                if (group.type === 'rootHandles') {
+                    for (let i = 0; i < group.handles.length; i++) {
+                        if (scanAborted) return;
+                        try {
+                            const fileObj = await group.handles[i].handle.getFile();
+                            collectedItems.push({ file: fileObj, folder: group.folderName });
+                            const subPct = basePct + ((i + 1) / group.handles.length) * (nextPct - basePct);
+                            updateScanUI(subPct, `正在读取: ${group.handles[i].name}`, collectedItems.length);
+                        } catch (e) { }
+                    }
+                } else if (group.type === 'dirHandle') {
+                    await readDirectoryFast(group.handle, group.folderName, collectedItems, basePct, nextPct);
+                }
+            }
+
+            if (scanAborted) return;
+            updateScanUI(100, '扫描完成，正在生成海报墙...', collectedItems.length);
+            await new Promise(r => setTimeout(r, 220));
+            scanLoadingModal.classList.add('hidden');
+
+            if (collectedItems.length === 0) {
+                alert('所选文件夹内未找到支持的视频文件！');
+                return;
+            }
+
+            collectedItems.sort((a, b) => a.file.name.localeCompare(b.file.name, 'zh-CN', { numeric: true }));
+            commitItemsToPlaylist(collectedItems, pendingRootName);
+        }
+
+        async function readDirectoryFast(dirHandle, folderLabel, collectedItems, startPct, endPct) {
+            const entries = [];
+            try {
+                for await (const entry of dirHandle.values()) {
+                    if (scanAborted) return;
+                    if (entry.name.startsWith('$') || entry.name === 'System Volume Information') continue;
+                    entries.push(entry);
+                }
+            } catch (e) {
+                return; // 遇无权限目录直接容错跳过
+            }
+
+            const total = entries.length || 1;
+            for (let i = 0; i < entries.length; i++) {
+                if (scanAborted) return;
+                const entry = entries[i];
+                const curPct = startPct + ((i + 1) / total) * (endPct - startPct);
+
+                if (entry.kind === 'file') {
+                    // 关键优化：先按后缀过滤，非视频直接跳过，不触发磁盘 getFile()
+                    if (!isVideoFileName(entry.name)) continue;
+                    try {
+                        const fileObj = await entry.getFile();
+                        collectedItems.push({ file: fileObj, folder: folderLabel });
+                        updateScanUI(curPct, `扫描 [${folderLabel}]: ${entry.name}`, collectedItems.length);
+                    } catch (e) { }
+                } else if (entry.kind === 'directory') {
+                    updateScanUI(curPct, `进入子目录: ${folderLabel} / ${entry.name}`, collectedItems.length);
+                    await readDirectoryFast(entry, folderLabel, collectedItems, curPct, endPct);
+                }
+            }
+        }
+
+        // ======================== 装载片单与渲染海报墙 ========================
         function commitItemsToPlaylist(items, rootName) {
             const startId = appendMode ? playlist.length : 0;
             const newEntries = items.map((entry, idx) => ({
@@ -913,6 +1051,30 @@
             generateThumbnails(newEntries);
         }
 
+        function showWallScreen() {
+            welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
+            wallScreen.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => wallScreen.classList.remove('opacity-0'));
+            });
+            setTimeout(() => welcomeScreen.classList.add('hidden'), 450);
+        }
+
+        function switchFolder() {
+            closePlayerToWall();
+            wallScreen.classList.add('opacity-0');
+            welcomeScreen.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => welcomeScreen.classList.remove('opacity-0', 'pointer-events-none'));
+            });
+            setTimeout(() => {
+                wallScreen.classList.add('hidden');
+                playlist = [];
+                currentVideoIndex = -1;
+                selectedCategories.clear();
+            }, 400);
+        }
+
         function updateHeroBanner(item) {
             if (!item) return;
             heroTitle.textContent = item.name.replace(/\.[^/.]+$/, '');
@@ -938,7 +1100,6 @@
             openPlayerWithVideo(randItem.id);
         }
 
-        // 渲染支持多选的子目录分类胶囊
         function renderCategoryPills() {
             const folders = [...new Set(playlist.map(item => item.folder))];
             if (folders.length <= 1) {
@@ -947,7 +1108,6 @@
             }
             categoryPills.innerHTML = '';
 
-            // “全部”按钮
             const isAll = selectedCategories.size === 0;
             const allBtn = document.createElement('button');
             allBtn.textContent = '全部';
@@ -960,7 +1120,6 @@
             };
             categoryPills.appendChild(allBtn);
 
-            // 各个文件夹多选标签
             folders.forEach(cat => {
                 const active = selectedCategories.has(cat);
                 const btn = document.createElement('button');
