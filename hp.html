@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>马尔可夫链时序分析</title>
+    <!-- Tailwind CSS 3.4.17 -->
+    <script src="./3.4.17.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        abyss: '#050b18',
+                        panel: '#0b1528',
+                        panelBorder: '#162844',
+                        cyanGlow: '#06b6d4',
+                        cyanBright: '#22d3ee',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- ECharts 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- 读取根目录 hp.js -->
+    <script src="./hp.js" onerror="window.__hpLoadError = true;"></script>
+    <style>
+        body {
+            background: radial-gradient(circle at 18% 10%, #0d1f3c 0%, #050b18 55%, #030711 100%);
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        .tech-card {
+            background: linear-gradient(160deg, rgba(13, 25, 48, 0.92) 0%, rgba(8, 16, 33, 0.96) 100%);
+            border: 1px solid rgba(34, 211, 238, 0.16);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(34, 211, 238, 0.08);
+            backdrop-filter: blur(8px);
+        }
+
+        .tech-card:hover {
+            border-color: rgba(34, 211, 238, 0.32);
+        }
+
+        .insight-box {
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.09) 0%, rgba(15, 23, 42, 0.65) 100%);
+            border-left: 3px solid #22d3ee;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0891b2 0%, #0284c7 100%);
+            box-shadow: 0 0 16px rgba(6, 182, 212, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(15, 31, 58, 0.9);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(20, 44, 82, 0.95);
+            border-color: rgba(34, 211, 238, 0.65);
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #071020;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1c385e;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- 16:9 宽屏容器 -->
+    <div class="max-w-[1640px] mx-auto px-4 sm:px-6 py-4 space-y-4">
+
+        <!-- 顶部标题栏 -->
+        <header class="flex flex-wrap items-center justify-between gap-3 px-1">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-7 rounded-full bg-gradient-to-b from-cyan-300 to-blue-600 shadow-[0_0_12px_#22d3ee]">
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-wider text-slate-100">
+                    马尔可夫链时序分析
+                </h1>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-400">
+                <span class="px-2.5 py-1 rounded-full bg-cyan-950/50 border border-cyan-500/25 text-cyan-300">
+                    状态空间：01 ~ 80
+                </span>
+                <span class="px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/70">
+                    单期维度：20 命中编号
+                </span>
+            </div>
+        </header>
+
+        <!-- 1. 控制面板卡片 + 下一期直白推演摘要 -->
+        <section class="tech-card rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-[260px]">
+                    <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                    <div class="text-sm">
+                        <span class="text-slate-400">数据状态：</span>
+                        <span id="statusText" class="text-slate-100 font-medium">等待加载数据集 (hp.js)</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <div
+                        class="flex items-center gap-2 bg-slate-950/70 border border-slate-700/80 rounded-xl px-3 py-1.5">
+                        <label for="periodCount" class="text-xs text-slate-400 whitespace-nowrap">统计期数</label>
+                        <input id="periodCount" type="number" min="2" max="5000" value="100"
+                            class="w-20 bg-transparent text-cyan-300 font-semibold text-sm focus:outline-none text-right" />
+                        <span class="text-xs text-slate-500">期</span>
+                    </div>
+
+                    <button id="btnLoad"
+                        class="btn-secondary text-cyan-200 text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
+                        加载数据集
+                    </button>
+                    <button id="btnBuild" disabled
+                        class="btn-secondary text-cyan-200 text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
+                        构建转移矩阵
+                    </button>
+                    <button id="btnRender" disabled
+                        class="btn-primary text-white text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
+                        渲染可视化图表
+                    </button>
+                </div>
+            </div>
+
+            <!-- 模型说明文字 -->
+            <div
+                class="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <p>
+                    <span class="text-cyan-400 font-medium">模型说明：</span>
+                    一阶马尔可夫时序模型，统计编号之间的转移频次与同期共现频次，基于无后效性假设，下一状态概率仅由当前状态决定。
+                </p>
+                <span id="matrixSummary" class="text-cyan-300/80 font-mono"></span>
+            </div>
+
+            <!-- 下一期直白推演面板（渲染后自动填充） -->
+            <div id="forecastSummaryBox"
+                class="hidden rounded-xl border border-cyan-500/25 bg-slate-950/75 p-3.5 space-y-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-semibold">
+                            下一期模型直白推演
+                        </span>
+                        <span id="forecastTargetLabel" class="text-xs text-slate-400"></span>
+                    </div>
+                    <span class="text-[11px] text-slate-400">理论均匀均值：1.250%（1/80）</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 text-xs">
+                    <!-- 前 10 核心高概率 -->
+                    <div class="lg:col-span-5 bg-slate-900/70 rounded-lg p-2.5 border border-slate-800">
+                        <div class="text-slate-400 mb-1.5 flex items-center justify-between">
+                            <span>最优先候选（Top 10 高概率编号）</span>
+                            <span id="top1LiftText" class="text-cyan-300 font-mono"></span>
+                        </div>
+                        <div id="top10Chips" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+
+                    <!-- Top 11~20 次选候选 -->
+                    <div class="lg:col-span-4 bg-slate-900/70 rounded-lg p-2.5 border border-slate-800">
+                        <div class="text-slate-400 mb-1.5">第二梯队候选（Top 11 ~ 20）</div>
+                        <div id="top11to20Chips" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+
+                    <!-- 直白结论一句话 -->
+                    <div
+                        class="lg:col-span-3 bg-slate-900/70 rounded-lg p-2.5 border border-slate-800 flex flex-col justify-center">
+                        <div class="text-cyan-300 font-medium mb-1">直白推演解读</div>
+                        <p id="forecastPlainText" class="text-slate-300 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 状态有向关系图 -->
+        <section class="tech-card rounded-2xl p-4 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-4 rounded bg-cyan-400"></span>
+                    <h2 class="text-sm sm:text-base font-semibold text-slate-100">状态有向关系图</h2>
+                    <span class="text-xs text-slate-400">（圆形节点代表编号，有向边标注转移概率，亮青色节点为最新一期已命中编号）</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <label for="graphEdgeLimit" class="text-slate-400">展示高概率转移边：</label>
+                    <select id="graphEdgeLimit"
+                        class="bg-slate-950/80 border border-slate-700 rounded-lg px-2 py-1 text-cyan-300 focus:outline-none">
+                        <option value="25">前 25 条</option>
+                        <option value="40" selected>前 40 条</option>
+                        <option value="60">前 60 条</option>
+                    </select>
+                </div>
+            </div>
+            <div id="chartDirectedGraph" class="w-full h-[360px]"></div>
+            <div id="insightDirected" class="insight-box rounded-r-lg px-3 py-2 text-xs text-slate-300 leading-relaxed">
+                视图解读：等待渲染图表后，将自动提炼最强定向转移路径与核心枢纽编号。
+            </div>
+        </section>
+
+        <!-- 3. 80×80转移概率热力图 & 4. 同期共现矩阵热力图 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- 3. 80×80转移概率热力图 -->
+            <section class="tech-card rounded-2xl p-4 flex flex-col space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded bg-cyan-400"></span>
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-100">80×80 转移概率热力图</h2>
+                    </div>
+                    <span class="text-xs text-slate-400">X: 上期编号 / Y: 下期编号</span>
+                </div>
+                <div id="chartTransitionHeatmap" class="w-full h-[410px]"></div>
+                <div id="insightTransHeat"
+                    class="insight-box rounded-r-lg px-3 py-2 text-xs text-slate-300 leading-relaxed">
+                    视图解读：等待渲染后，将指出全矩阵中最频繁出现的“上期 → 下期”状态接力组合。
+                </div>
+            </section>
+
+            <!-- 4. 同期共现矩阵热力图 -->
+            <section class="tech-card rounded-2xl p-4 flex flex-col space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded bg-cyan-400"></span>
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-100">同期共现矩阵热力图</h2>
+                    </div>
+                    <span class="text-xs text-slate-400">色块深浅表示同周期共现频次</span>
+                </div>
+                <div id="chartCooccurrenceHeatmap" class="w-full h-[410px]"></div>
+                <div id="insightCoHeat"
+                    class="insight-box rounded-r-lg px-3 py-2 text-xs text-slate-300 leading-relaxed">
+                    视图解读：等待渲染后，将提炼同周期绑定出现最多的“高频共现搭档”。
+                </div>
+            </section>
+        </div>
+
+        <!-- 5. 间隔周期分布柱状图 & 6. 预估概率排行表格 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <!-- 5. 间隔周期分布柱状图 -->
+            <section class="tech-card rounded-2xl p-4 lg:col-span-7 flex flex-col space-y-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded bg-cyan-400"></span>
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-100">间隔周期分布柱状图</h2>
+                        <span class="text-xs text-slate-400">（两次命中之间间隔周期数）</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <label for="intervalNumberSelect" class="text-slate-400">编号筛选：</label>
+                        <select id="intervalNumberSelect"
+                            class="bg-slate-950/80 border border-slate-700 rounded-lg px-2 py-1 text-cyan-300 focus:outline-none">
+                            <option value="all">全部编号汇总 (01~80)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="chartIntervalBar" class="w-full h-[330px]"></div>
+                <div id="insightInterval"
+                    class="insight-box rounded-r-lg px-3 py-2 text-xs text-slate-300 leading-relaxed">
+                    视图解读：等待渲染后，将统计常见间隔周期、连续命中占比，并支持查看单个编号当前已间隔周期数。
+                </div>
+            </section>
+
+            <!-- 6. 预估概率排行表格（保持两列：编号、预估转移概率） -->
+            <section class="tech-card rounded-2xl p-4 lg:col-span-5 flex flex-col space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded bg-cyan-400"></span>
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-100">预估概率排行</h2>
+                    </div>
+                    <span id="latestCodeBadge" class="text-xs text-cyan-300/80 font-mono">基于最新状态</span>
+                </div>
+                <div class="flex-1 overflow-y-auto max-h-[330px] rounded-xl border border-slate-800/90 bg-slate-950/50">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead
+                            class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 text-xs text-slate-400 uppercase z-10">
+                            <tr>
+                                <th class="py-2.5 px-4 font-medium">编号</th>
+                                <th class="py-2.5 px-4 font-medium text-right">预估转移概率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rankingTableBody" class="divide-y divide-slate-800/60 text-slate-200">
+                            <tr>
+                                <td colspan="2" class="py-12 text-center text-xs text-slate-500">
+                                    请依次点击「加载数据集」→「构建转移矩阵」→「渲染可视化图表」
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="insightRanking"
+                    class="insight-box rounded-r-lg px-3 py-2 text-xs text-slate-300 leading-relaxed">
+                    视图解读：等待渲染后，将对比高低概率梯队差距与高于均值的编号数量。
+                </div>
+            </section>
+        </div>
+
+        <!-- 最底部免责小字 -->
+        <footer class="pt-1 pb-2 text-center">
+            <p class="text-[11px] text-slate-500 tracking-wide">
+                重要提示：本工具仅用于算法学习、时序数据可视化演示，模型输出结果不具备预判能力，不可作为任何决策依据。
+            </p>
+        </footer>
+
+    </div>
+
+    <script>
+            (function () {
+                'use strict';
+
+                const state = {
+                    rawDataset: [],
+                    activeSeries: [],
+                    transFreq: null,
+                    transProb: null,
+                    coFreq: null,
+                    intervalAll: {},
+                    intervalByNum: [],
+                    currentGapByNum: [], // 每个编号距离最近一期的未命中连续周期数（0表示最新一期刚命中）
+                    ranking: [],
+                    matrixBuilt: false
+                };
+
+                const charts = {
+                    directed: null,
+                    transHeat: null,
+                    coHeat: null,
+                    intervalBar: null
+                };
+
+                const dom = {
+                    statusDot: document.getElementById('statusDot'),
+                    statusText: document.getElementById('statusText'),
+                    periodCount: document.getElementById('periodCount'),
+                    btnLoad: document.getElementById('btnLoad'),
+                    btnBuild: document.getElementById('btnBuild'),
+                    btnRender: document.getElementById('btnRender'),
+                    matrixSummary: document.getElementById('matrixSummary'),
+                    graphEdgeLimit: document.getElementById('graphEdgeLimit'),
+                    intervalNumberSelect: document.getElementById('intervalNumberSelect'),
+                    latestCodeBadge: document.getElementById('latestCodeBadge'),
+                    rankingTableBody: document.getElementById('rankingTableBody'),
+                    forecastSummaryBox: document.getElementById('forecastSummaryBox'),
+                    forecastTargetLabel: document.getElementById('forecastTargetLabel'),
+                    top1LiftText: document.getElementById('top1LiftText'),
+                    top10Chips: document.getElementById('top10Chips'),
+                    top11to20Chips: document.getElementById('top11to20Chips'),
+                    forecastPlainText: document.getElementById('forecastPlainText'),
+                    insightDirected: document.getElementById('insightDirected'),
+                    insightTransHeat: document.getElementById('insightTransHeat'),
+                    insightCoHeat: document.getElementById('insightCoHeat'),
+                    insightInterval: document.getElementById('insightInterval'),
+                    insightRanking: document.getElementById('insightRanking')
+                };
+
+                const pad2 = (n) => String(n).padStart(2, '0');
+                const labels80 = Array.from({ length: 80 }, (_, i) => pad2(i + 1));
+                const UNIFORM_BASE = 1 / 80; // 1.25%
+
+                labels80.forEach((lbl, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = String(idx);
+                    opt.textContent = `编号 ${lbl}`;
+                    dom.intervalNumberSelect.appendChild(opt);
+                });
+
+                function setStatus(type, text) {
+                    const dotMap = {
+                        idle: 'bg-amber-400 shadow-[0_0_8px_#fbbf24]',
+                        ok: 'bg-emerald-400 shadow-[0_0_8px_#34d399]',
+                        active: 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]',
+                        error: 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
+                    };
+                    dom.statusDot.className = `w-2.5 h-2.5 rounded-full ${dotMap[type] || dotMap.idle}`;
+                    dom.statusText.textContent = text;
+                }
+
+                function ensureCharts() {
+                    if (!charts.directed) charts.directed = echarts.init(document.getElementById('chartDirectedGraph'));
+                    if (!charts.transHeat) charts.transHeat = echarts.init(document.getElementById('chartTransitionHeatmap'));
+                    if (!charts.coHeat) charts.coHeat = echarts.init(document.getElementById('chartCooccurrenceHeatmap'));
+                    if (!charts.intervalBar) charts.intervalBar = echarts.init(document.getElementById('chartIntervalBar'));
+                }
+
+                window.addEventListener('resize', () => {
+                    Object.values(charts).forEach((c) => c && c.resize());
+                });
+
+                // 1. 加载数据集
+                function loadDataset() {
+                    let sourceData = null;
+                    try {
+                        if (typeof data !== 'undefined' && Array.isArray(data)) sourceData = data;
+                    } catch (e) {
+                        sourceData = null;
+                    }
+
+                    if (!sourceData || sourceData.length === 0) {
+                        setStatus('error', '未检测到根目录 hp.js 中的有效 data 数组，请检查文件是否存在');
+                        dom.btnBuild.disabled = true;
+                        dom.btnRender.disabled = true;
+                        return false;
+                    }
+
+                    const parsed = [];
+                    for (const item of sourceData) {
+                        if (!item || item.code == null || !item.red) continue;
+                        const nums = String(item.red)
+                            .split(',')
+                            .map((s) => parseInt(s.trim(), 10))
+                            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 80);
+                        if (nums.length > 0) {
+                            parsed.push({
+                                code: String(item.code).trim(),
+                                nums: Array.from(new Set(nums)).sort((a, b) => a - b)
+                            });
+                        }
+                    }
+
+                    if (parsed.length < 2) {
+                        setStatus('error', '有效时序期数不足 2 期，无法建立转移模型');
+                        return false;
+                    }
+
+                    parsed.sort((a, b) => {
+                        const na = Number(a.code);
+                        const nb = Number(b.code);
+                        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+                        return a.code.localeCompare(b.code);
+                    });
+
+                    state.rawDataset = parsed;
+                    state.matrixBuilt = false;
+
+                    const defaultPeriod = Math.min(100, parsed.length);
+                    if (Number(dom.periodCount.value) > parsed.length || Number(dom.periodCount.value) < 2) {
+                        dom.periodCount.value = defaultPeriod;
+                    }
+                    dom.periodCount.max = parsed.length;
+
+                    setStatus('ok', `已加载 ${parsed.length} 期时序数据（${parsed[0].code} ~ ${parsed[parsed.length - 1].code}）`);
+                    dom.btnBuild.disabled = false;
+                    dom.btnRender.disabled = true;
+                    dom.matrixSummary.textContent = '';
+                    return true;
+                }
+
+                // 2. 构建转移矩阵与统计量
+                function buildMatrices() {
+                    if (!state.rawDataset.length) {
+                        setStatus('error', '请先加载数据集');
+                        return false;
+                    }
+
+                    let count = parseInt(dom.periodCount.value, 10);
+                    if (Number.isNaN(count) || count < 2) count = 2;
+                    if (count > state.rawDataset.length) count = state.rawDataset.length;
+                    dom.periodCount.value = count;
+
+                    const series = state.rawDataset.slice(-count);
+                    state.activeSeries = series;
+
+                    const N = 80;
+                    const transFreq = Array.from({ length: N }, () => new Int32Array(N));
+                    const transProb = Array.from({ length: N }, () => new Float64Array(N));
+                    const coFreq = Array.from({ length: N }, () => new Int32Array(N));
+
+                    let totalTransitions = 0;
+                    for (let t = 0; t < series.length - 1; t++) {
+                        const curr = series[t].nums;
+                        const next = series[t + 1].nums;
+                        for (let i = 0; i < curr.length; i++) {
+                            const u = curr[i] - 1;
+                            for (let j = 0; j < next.length; j++) {
+                                const v = next[j] - 1;
+                                transFreq[u][v] += 1;
+                                totalTransitions += 1;
+                            }
+                        }
+                    }
+
+                    for (let u = 0; u < N; u++) {
+                        let rowSum = 0;
+                        for (let v = 0; v < N; v++) rowSum += transFreq[u][v];
+                        if (rowSum > 0) {
+                            for (let v = 0; v < N; v++) {
+                                transProb[u][v] = transFreq[u][v] / rowSum;
+                            }
+                        }
+                    }
+
+                    for (let t = 0; t < series.length; t++) {
+                        const nums = series[t].nums;
+                        for (let i = 0; i < nums.length; i++) {
+                            const u = nums[i] - 1;
+                            for (let j = i + 1; j < nums.length; j++) {
+                                const v = nums[j] - 1;
+                                coFreq[u][v] += 1;
+                                coFreq[v][u] += 1;
+                            }
+                        }
+                    }
+
+                    const lastSeen = new Int32Array(N).fill(-1);
+                    const intervalAll = new Map();
+                    const intervalByNum = Array.from({ length: N }, () => new Map());
+
+                    for (let t = 0; t < series.length; t++) {
+                        const nums = series[t].nums;
+                        for (let i = 0; i < nums.length; i++) {
+                            const idx = nums[i] - 1;
+                            if (lastSeen[idx] !== -1) {
+                                const gap = t - lastSeen[idx] - 1;
+                                intervalAll.set(gap, (intervalAll.get(gap) || 0) + 1);
+                                intervalByNum[idx].set(gap, (intervalByNum[idx].get(gap) || 0) + 1);
+                            }
+                            lastSeen[idx] = t;
+                        }
+                    }
+
+                    // 计算截至最新一期，每个编号已经连续未命中的周期数
+                    const currentGapByNum = new Int32Array(N);
+                    const lastIndex = series.length - 1;
+                    for (let i = 0; i < N; i++) {
+                        currentGapByNum[i] = lastSeen[i] === -1 ? series.length : (lastIndex - lastSeen[i]);
+                    }
+
+                    const latestPeriod = series[series.length - 1];
+                    const activeNums = latestPeriod.nums;
+                    const ranking = [];
+                    let probSum = 0;
+
+                    for (let v = 0; v < N; v++) {
+                        let sumP = 0;
+                        let maxFromU = -1;
+                        let maxFromP = 0;
+                        for (let i = 0; i < activeNums.length; i++) {
+                            const u = activeNums[i] - 1;
+                            const p = transProb[u][v];
+                            sumP += p;
+                            if (p > maxFromP) {
+                                maxFromP = p;
+                                maxFromU = u + 1;
+                            }
+                        }
+                        const avgP = activeNums.length > 0 ? sumP / activeNums.length : 0;
+                        probSum += avgP;
+                        ranking.push({
+                            num: v + 1,
+                            label: pad2(v + 1),
+                            prob: avgP,
+                            topDriver: maxFromU,
+                            topDriverProb: maxFromP
+                        });
+                    }
+
+                    if (probSum > 0) {
+                        ranking.forEach((r) => { r.prob = r.prob / probSum; });
+                    }
+                    ranking.sort((a, b) => b.prob - a.prob || a.num - b.num);
+
+                    state.transFreq = transFreq;
+                    state.transProb = transProb;
+                    state.coFreq = coFreq;
+                    state.intervalAll = intervalAll;
+                    state.intervalByNum = intervalByNum;
+                    state.currentGapByNum = currentGapByNum;
+                    state.ranking = ranking;
+                    state.matrixBuilt = true;
+
+                    dom.btnRender.disabled = false;
+                    dom.matrixSummary.textContent =
+                        `分析窗口：${series[0].code} ~ ${latestPeriod.code}（共 ${series.length} 期 / ${totalTransitions.toLocaleString()} 次状态转移）`;
+                    dom.latestCodeBadge.textContent = `当前基准期：${latestPeriod.code}`;
+                    setStatus('active', `转移矩阵构建完成（窗口 ${series.length} 期），点击「渲染可视化图表」查看推演结果`);
+                    return true;
+                }
+
+                // 3. 渲染全部图表与直白分析
+                function renderAllVisuals() {
+                    if (!state.matrixBuilt) return;
+                    ensureCharts();
+
+                    renderForecastSummary();
+                    renderDirectedGraph();
+                    renderTransitionHeatmap();
+                    renderCooccurrenceHeatmap();
+                    renderIntervalBarChart();
+                    renderRankingTable();
+
+                    setStatus('ok', `可视化与直白推演已完成（基于最近 ${state.activeSeries.length} 期）`);
+                }
+
+                // 3.0 下一期直白推演摘要卡片
+                function renderForecastSummary() {
+                    const latestCode = state.activeSeries[state.activeSeries.length - 1].code;
+                    const latestNums = new Set(state.activeSeries[state.activeSeries.length - 1].nums);
+                    const top10 = state.ranking.slice(0, 10);
+                    const top11to20 = state.ranking.slice(10, 20);
+                    const best = top10[0];
+                    const aboveMeanCount = state.ranking.filter((r) => r.prob > UNIFORM_BASE).length;
+
+                    const liftPct = (((best.prob - UNIFORM_BASE) / UNIFORM_BASE) * 100).toFixed(1);
+                    dom.forecastSummaryBox.classList.remove('hidden');
+                    dom.forecastTargetLabel.textContent = `基于最新一期 [${latestCode}] 的 20 个活跃编号推演下一期分布`;
+                    dom.top1LiftText.textContent = `榜首 ${best.label} 较均值 +${liftPct}%`;
+
+                    dom.top10Chips.innerHTML = top10.map((item, idx) => {
+                        const isRepeat = latestNums.has(item.num);
+                        return `
+            <span title="来自本期 ${pad2(item.topDriver)} 的单线牵引最强"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${idx < 3
+                                ? 'bg-cyan-500/25 border-cyan-400/60 text-cyan-200 font-bold'
+                                : 'bg-cyan-950/60 border-cyan-500/30 text-cyan-300 font-semibold'
+                            }">
+              <span>${item.label}</span>
+              <span class="text-[10px] text-cyan-300/80 font-mono">${(item.prob * 100).toFixed(2)}%</span>
+              ${isRepeat ? '<span class="text-[9px] text-amber-300" title="本期已命中（重号延续倾向）">●</span>' : ''}
+            </span>
+          `;
+                    }).join('');
+
+                    dom.top11to20Chips.innerHTML = top11to20.map((item) => `
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/85 border border-slate-700 text-slate-200">
+            <span class="font-medium">${item.label}</span>
+            <span class="text-[10px] text-slate-400 font-mono">${(item.prob * 100).toFixed(2)}%</span>
+          </span>
+        `).join('');
+
+                    const repeatInTop10 = top10.filter((i) => latestNums.has(i.num)).map((i) => i.label);
+                    const repeatText = repeatInTop10.length > 0
+                        ? `其中 ${repeatInTop10.slice(0, 3).join('、')} 为本期延续热点（带 ● 标记）；`
+                        : '前 10 候选均为跨期新转换编号；';
+
+                    dom.forecastPlainText.innerHTML =
+                        `按模型计算，下一期最建议优先观察左侧 <b class="text-cyan-300">Top 10（如 ${top10.slice(0, 5).map(x => x.label).join('、')}）</b>，全部 80 个编号中共有 <b class="text-cyan-300">${aboveMeanCount}</b> 个高于理论均值 1.250%。${repeatText}最高编号 <b class="text-cyan-300">${best.label}</b> 主要受本期 <b class="text-cyan-300">${pad2(best.topDriver)}</b> 强转移拉动。`;
+                }
+
+                // 3.1 状态有向关系图 + 直白解读
+                function renderDirectedGraph() {
+                    const limit = parseInt(dom.graphEdgeLimit.value, 10) || 40;
+                    const N = 80;
+                    const edgesRaw = [];
+
+                    for (let u = 0; u < N; u++) {
+                        for (let v = 0; v < N; v++) {
+                            const p = state.transProb[u][v];
+                            const f = state.transFreq[u][v];
+                            if (p > 0 && f > 0) edgesRaw.push({ u, v, p, f });
+                        }
+                    }
+
+                    edgesRaw.sort((a, b) => b.p - a.p || b.f - a.f);
+                    const topEdges = edgesRaw.slice(0, limit);
+
+                    const activeNodeSet = new Set();
+                    const latestSet = new Set(state.activeSeries[state.activeSeries.length - 1].nums);
+                    topEdges.forEach((e) => {
+                        activeNodeSet.add(e.u);
+                        activeNodeSet.add(e.v);
+                    });
+
+                    const degreeMap = new Map();
+                    const outCountMap = new Map();
+                    const inCountMap = new Map();
+                    topEdges.forEach((e) => {
+                        degreeMap.set(e.u, (degreeMap.get(e.u) || 0) + 1);
+                        degreeMap.set(e.v, (degreeMap.get(e.v) || 0) + 1);
+                        outCountMap.set(e.u, (outCountMap.get(e.u) || 0) + 1);
+                        inCountMap.set(e.v, (inCountMap.get(e.v) || 0) + 1);
+                    });
+
+                    const nodes = Array.from(activeNodeSet)
+                        .sort((a, b) => a - b)
+                        .map((idx) => {
+                            const deg = degreeMap.get(idx) || 1;
+                            const isLatest = latestSet.has(idx + 1);
+                            return {
+                                id: String(idx),
+                                name: pad2(idx + 1),
+                                symbolSize: Math.min(34, 18 + deg * 2.4),
+                                value: deg,
+                                itemStyle: {
+                                    color: isLatest ? '#22d3ee' : '#0284c7',
+                                    borderColor: isLatest ? '#cffafe' : '#38bdf8',
+                                    borderWidth: isLatest ? 2 : 1.2,
+                                    shadowBlur: isLatest ? 14 : 6,
+                                    shadowColor: isLatest ? 'rgba(34,211,238,0.8)' : 'rgba(56,189,248,0.35)'
+                                },
+                                label: {
+                                    show: true,
+                                    color: isLatest ? '#041224' : '#e0f2fe',
+                                    fontWeight: 'bold',
+                                    fontSize: 10
+                                }
+                            };
+                        });
+
+                    const links = topEdges.map((e) => ({
+                        source: String(e.u),
+                        target: String(e.v),
+                        value: (e.p * 100).toFixed(2) + '%',
+                        rawProb: e.p,
+                        rawFreq: e.f,
+                        lineStyle: {
+                            color: '#22d3ee',
+                            width: Math.max(1, Math.min(3.2, e.p * 45)),
+                            opacity: 0.72,
+                            curveness: 0.18
+                        }
+                    }));
+
+                    charts.directed.setOption({
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            trigger: 'item',
+                            backgroundColor: 'rgba(7, 16, 33, 0.94)',
+                            borderColor: 'rgba(34, 211, 238, 0.45)',
+                            textStyle: { color: '#e2e8f0', fontSize: 12 },
+                            formatter: (params) => {
+                                if (params.dataType === 'edge') {
+                                    const d = params.data;
+                                    return `状态转移：<b>${pad2(Number(d.source) + 1)} → ${pad2(Number(d.target) + 1)}</b><br/>` +
+                                        `转移概率：<span style="color:#22d3ee">${d.value}</span><br/>` +
+                                        `转移频次：${d.rawFreq} 次`;
+                                }
+                                return `编号：<b>${params.name}</b><br/>关联高概率边数：${params.value}`;
+                            }
+                        },
+                        series: [{
+                            type: 'graph',
+                            layout: 'circular',
+                            circular: { rotateLabel: false },
+                            roam: true,
+                            draggable: true,
+                            focusNodeAdjacency: true,
+                            edgeSymbol: ['none', 'arrow'],
+                            edgeSymbolSize: [4, 9],
+                            edgeLabel: { show: true, fontSize: 9, color: '#7dd3fc', formatter: '{c}' },
+                            data: nodes,
+                            links: links,
+                            emphasis: {
+                                focus: 'adjacency',
+                                lineStyle: { width: 3.5, opacity: 1, color: '#67e8f9' }
+                            }
+                        }]
+                    }, true);
+
+                    // 生成直白解读
+                    const top3 = topEdges.slice(0, 3).map(e => `<b class="text-cyan-300">${pad2(e.u + 1)}→${pad2(e.v + 1)}</b>(${(e.p * 100).toFixed(2)}%)`);
+                    const topInNode = Array.from(inCountMap.entries()).sort((a, b) => b[1] - a[1])[0];
+                    const latestInGraph = Array.from(activeNodeSet).filter(idx => latestSet.has(idx + 1)).map(idx => pad2(idx + 1));
+
+                    dom.insightDirected.innerHTML =
+                        `<b class="text-cyan-300">视图直白解读：</b>全样本中箭头最粗/概率最高的 3 条路径为 ${top3.join('、')}；` +
+                        (topInNode ? `被最多强箭头指向的“汇聚目标编号”是 <b class="text-cyan-300">${pad2(topInNode[0] + 1)}</b>（接收 ${topInNode[1]} 条高概率指向）；` : '') +
+                        `图中共有 <b class="text-cyan-300">${latestInGraph.length}</b> 个亮青色节点属于最新一期命中状态${latestInGraph.length ? '（' + latestInGraph.slice(0, 6).join('、') + (latestInGraph.length > 6 ? ' 等' : '') + '）' : ''}，它们射出的箭头直接决定了下期推演高分编号。`;
+                }
+
+                // 3.2 80×80 转移概率热力图 + 直白解读
+                function renderTransitionHeatmap() {
+                    const dataPoints = [];
+                    let maxFreq = 1;
+                    let zeroCount = 0;
+                    const topPairs = [];
+
+                    for (let u = 0; u < 80; u++) {
+                        for (let v = 0; v < 80; v++) {
+                            const f = state.transFreq[u][v];
+                            if (f > maxFreq) maxFreq = f;
+                            if (f === 0) zeroCount++;
+                            else topPairs.push({ u, v, f, p: state.transProb[u][v] });
+                            dataPoints.push([u, v, f]);
+                        }
+                    }
+
+                    charts.transHeat.setOption({
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            position: 'top',
+                            backgroundColor: 'rgba(7, 16, 33, 0.94)',
+                            borderColor: 'rgba(34, 211, 238, 0.45)',
+                            textStyle: { color: '#e2e8f0', fontSize: 12 },
+                            formatter: (params) => {
+                                const [u, v, f] = params.value;
+                                const prob = (state.transProb[u][v] * 100).toFixed(2);
+                                return `上期编号：<b>${pad2(u + 1)}</b> → 下期编号：<b>${pad2(v + 1)}</b><br/>` +
+                                    `转移频次：<span style="color:#22d3ee">${f}</span> 次<br/>` +
+                                    `条件转移概率：${prob}%`;
+                            }
+                        },
+                        grid: { top: 14, right: 54, bottom: 38, left: 42 },
+                        xAxis: {
+                            type: 'category',
+                            data: labels80,
+                            name: '上期编号',
+                            nameLocation: 'middle',
+                            nameGap: 24,
+                            nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+                            axisLabel: { color: '#64748b', fontSize: 9, interval: 4 },
+                            axisLine: { lineStyle: { color: '#1e3a5f' } }
+                        },
+                        yAxis: {
+                            type: 'category',
+                            data: labels80,
+                            name: '下期编号',
+                            nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+                            axisLabel: { color: '#64748b', fontSize: 9, interval: 4 },
+                            axisLine: { lineStyle: { color: '#1e3a5f' } }
+                        },
+                        visualMap: {
+                            min: 0,
+                            max: maxFreq,
+                            calculable: true,
+                            orient: 'vertical',
+                            right: 2,
+                            top: 'center',
+                            itemWidth: 10,
+                            itemHeight: 160,
+                            textStyle: { color: '#94a3b8', fontSize: 10 },
+                            inRange: { color: ['#071326', '#0a294d', '#0369a1', '#06b6d4', '#67e8f9'] }
+                        },
+                        series: [{
+                            type: 'heatmap',
+                            data: dataPoints,
+                            progressive: 2000,
+                            emphasis: { itemStyle: { borderColor: '#cffafe', borderWidth: 1 } }
+                        }]
+                    }, true);
+
+                    topPairs.sort((a, b) => b.f - a.f || b.p - a.p);
+                    const top3Text = topPairs.slice(0, 3).map(x => `<b class="text-cyan-300">${pad2(x.u + 1)}→${pad2(x.v + 1)}</b>(${x.f}次)`).join('、');
+                    const coveragePct = (((6400 - zeroCount) / 6400) * 100).toFixed(1);
+
+                    dom.insightTransHeat.innerHTML =
+                        `<b class="text-cyan-300">视图直白解读：</b>最亮的色块代表最频繁发生的接力组合，当前最热的前 3 组为 ${top3Text}。` +
+                        `在全部 6400 个转移格子里，有 <b class="text-cyan-300">${coveragePct}%</b> 发生过实际转移（其余为 0 次冷态组合），越集中出现亮斑说明特定编号间存在较稳定的前后牵引惯性。`;
+                }
+
+                // 3.3 同期共现矩阵热力图 + 直白解读
+                function renderCooccurrenceHeatmap() {
+                    const dataPoints = [];
+                    let maxCo = 1;
+                    const coPairs = [];
+
+                    for (let u = 0; u < 80; u++) {
+                        for (let v = 0; v < 80; v++) {
+                            const f = state.coFreq[u][v];
+                            if (f > maxCo) maxCo = f;
+                            if (u < v && f > 0) coPairs.push({ u, v, f });
+                            dataPoints.push([u, v, f]);
+                        }
+                    }
+
+                    charts.coHeat.setOption({
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            position: 'top',
+                            backgroundColor: 'rgba(7, 16, 33, 0.94)',
+                            borderColor: 'rgba(34, 211, 238, 0.45)',
+                            textStyle: { color: '#e2e8f0', fontSize: 12 },
+                            formatter: (params) => {
+                                const [u, v, f] = params.value;
+                                if (u === v) return `编号：<b>${pad2(u + 1)}</b>（对角线自项）`;
+                                return `编号组合：<b>${pad2(u + 1)} & ${pad2(v + 1)}</b><br/>` +
+                                    `同期共现频次：<span style="color:#22d3ee">${f}</span> 次`;
+                            }
+                        },
+                        grid: { top: 14, right: 54, bottom: 38, left: 42 },
+                        xAxis: {
+                            type: 'category',
+                            data: labels80,
+                            name: '编号 A',
+                            nameLocation: 'middle',
+                            nameGap: 24,
+                            nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+                            axisLabel: { color: '#64748b', fontSize: 9, interval: 4 },
+                            axisLine: { lineStyle: { color: '#1e3a5f' } }
+                        },
+                        yAxis: {
+                            type: 'category',
+                            data: labels80,
+                            name: '编号 B',
+                            nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+                            axisLabel: { color: '#64748b', fontSize: 9, interval: 4 },
+                            axisLine: { lineStyle: { color: '#1e3a5f' } }
+                        },
+                        visualMap: {
+                            min: 0,
+                            max: maxCo,
+                            calculable: true,
+                            orient: 'vertical',
+                            right: 2,
+                            top: 'center',
+                            itemWidth: 10,
+                            itemHeight: 160,
+                            textStyle: { color: '#94a3b8', fontSize: 10 },
+                            inRange: { color: ['#071326', '#0f2d52', '#0284c7', '#22d3ee', '#a5f3fc'] }
+                        },
+                        series: [{
+                            type: 'heatmap',
+                            data: dataPoints,
+                            progressive: 2000,
+                            emphasis: { itemStyle: { borderColor: '#cffafe', borderWidth: 1 } }
+                        }]
+                    }, true);
+
+                    coPairs.sort((a, b) => b.f - a.f);
+                    const top3Co = coPairs.slice(0, 3).map(x => `<b class="text-cyan-300">${pad2(x.u + 1)}&${pad2(x.v + 1)}</b>(${x.f}期)`).join('、');
+                    const latestNums = state.activeSeries[state.activeSeries.length - 1].nums;
+                    let bestLatestPair = null;
+                    for (let i = 0; i < latestNums.length; i++) {
+                        for (let j = i + 1; j < latestNums.length; j++) {
+                            const u = latestNums[i] - 1;
+                            const v = latestNums[j] - 1;
+                            const f = state.coFreq[u][v];
+                            if (!bestLatestPair || f > bestLatestPair.f) bestLatestPair = { u, v, f };
+                        }
+                    }
+
+                    dom.insightCoHeat.innerHTML =
+                        `<b class="text-cyan-300">视图直白解读：</b>最常在同一周期绑定出现的“强共现搭档”是 ${top3Co}。` +
+                        (bestLatestPair
+                            ? `最新一期中，同期绑定的最强老搭档为 <b class="text-cyan-300">${pad2(bestLatestPair.u + 1)}&${pad2(bestLatestPair.v + 1)}</b>（窗口内已同现 ${bestLatestPair.f} 次），若看重组合联动可重点观察热区高亮成对编号。`
+                            : '');
+                }
+
+                // 3.4 间隔周期分布柱状图 + 直白解读
+                function renderIntervalBarChart() {
+                    const selected = dom.intervalNumberSelect.value;
+                    const isAll = selected === 'all';
+                    const sourceMap = isAll ? state.intervalAll : state.intervalByNum[parseInt(selected, 10)];
+
+                    const maxBin = 15;
+                    const xCats = [];
+                    const yVals = [];
+                    for (let i = 0; i < maxBin; i++) {
+                        xCats.push(`${i}期`);
+                        yVals.push(sourceMap.get(i) || 0);
+                    }
+                    let overflow = 0;
+                    sourceMap.forEach((cnt, gap) => {
+                        if (gap >= maxBin) overflow += cnt;
+                    });
+                    xCats.push(`${maxBin}+期`);
+                    yVals.push(overflow);
+
+                    charts.intervalBar.setOption({
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: { type: 'shadow' },
+                            backgroundColor: 'rgba(7, 16, 33, 0.94)',
+                            borderColor: 'rgba(34, 211, 238, 0.45)',
+                            textStyle: { color: '#e2e8f0', fontSize: 12 },
+                            formatter: (params) => {
+                                const item = params[0];
+                                const tip = item.name === '0期' ? '（连续周期命中）' : '';
+                                return `间隔周期：<b>${item.name}</b> ${tip}<br/>` +
+                                    `出现次数：<span style="color:#22d3ee">${item.value}</span> 次`;
+                            }
+                        },
+                        grid: { top: 24, right: 18, bottom: 38, left: 48 },
+                        xAxis: {
+                            type: 'category',
+                            data: xCats,
+                            axisLabel: { color: '#94a3b8', fontSize: 11 },
+                            axisLine: { lineStyle: { color: '#1e3a5f' } }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '频次',
+                            nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+                            axisLabel: { color: '#94a3b8', fontSize: 11 },
+                            splitLine: { lineStyle: { color: 'rgba(30, 58, 95, 0.5)', type: 'dashed' } }
+                        },
+                        series: [{
+                            type: 'bar',
+                            data: yVals,
+                            barWidth: '56%',
+                            itemStyle: {
+                                borderRadius: [5, 5, 0, 0],
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: '#22d3ee' },
+                                    { offset: 1, color: '#0369a1' }
+                                ])
+                            },
+                            emphasis: { itemStyle: { color: '#67e8f9' } }
+                        }]
+                    }, true);
+
+                    // 统计众数、均值、连续命中占比
+                    let totalSamples = 0;
+                    let weightedGapSum = 0;
+                    let modeGap = 0;
+                    let modeCount = -1;
+                    sourceMap.forEach((cnt, gap) => {
+                        totalSamples += cnt;
+                        weightedGapSum += cnt * gap;
+                        if (cnt > modeCount) {
+                            modeCount = cnt;
+                            modeGap = gap;
+                        }
+                    });
+
+                    if (totalSamples === 0) {
+                        dom.insightInterval.innerHTML = `<b class="text-cyan-300">视图直白解读：</b>所选编号在当前统计窗口内命中次数不足 2 次，暂无足够间隔样本。`;
+                        return;
+                    }
+
+                    const avgGap = (weightedGapSum / totalSamples).toFixed(2);
+                    const zeroCnt = sourceMap.get(0) || 0;
+                    const zeroPct = ((zeroCnt / totalSamples) * 100).toFixed(1);
+
+                    if (isAll) {
+                        dom.insightInterval.innerHTML =
+                            `<b class="text-cyan-300">视图直白解读：</b>全部编号最常见的间隔为 <b class="text-cyan-300">${modeGap} 期</b>（出现 ${modeCount} 次），平均每间隔 <b class="text-cyan-300">${avgGap} 期</b> 再次命中；` +
+                            `其中“间隔 0 期”（即连续两期命中）占比 <b class="text-cyan-300">${zeroPct}%</b>。可在右上角筛选单个编号查看其当前遗漏周期。`;
+                    } else {
+                        const idx = parseInt(selected, 10);
+                        const curGap = state.currentGapByNum[idx];
+                        const statusMsg = curGap === 0
+                            ? `最新一期刚刚命中（当前间隔 0 期）`
+                            : `已连续 <b class="text-amber-300">${curGap} 期</b> 未命中，${curGap > Number(avgGap) ? '已超出' : '仍低于'}其历史平均间隔（${avgGap} 期）`;
+                        dom.insightInterval.innerHTML =
+                            `<b class="text-cyan-300">编号 ${pad2(idx + 1)} 直白解读：</b>历史最常见间隔 <b class="text-cyan-300">${modeGap} 期</b>，平均间隔 <b class="text-cyan-300">${avgGap} 期</b>，连击占比 ${zeroPct}%。截至最新一期，该编号${statusMsg}。`;
+                    }
+                }
+
+                // 3.5 预估概率排行表格（严格保持两列：编号、预估转移概率）+ 直白解读
+                function renderRankingTable() {
+                    const maxProb = state.ranking.length ? state.ranking[0].prob : 1;
+                    const rowsHtml = state.ranking.map((item, idx) => {
+                        const pct = (item.prob * 100).toFixed(3) + '%';
+                        const barPct = maxProb > 0 ? Math.round((item.prob / maxProb) * 100) : 0;
+                        const diffPct = (((item.prob - UNIFORM_BASE) / UNIFORM_BASE) * 100).toFixed(1);
+                        const isPositive = Number(diffPct) >= 0;
+                        const isTop20 = idx < 20;
+
+                        return `
+            <tr class="hover:bg-cyan-950/30 transition-colors ${idx === 19 ? 'border-b-2 border-cyan-500/40' : ''}">
+              <td class="py-2 px-4">
+                <div class="flex items-center gap-2.5">
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${idx < 10
+                                ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/50'
+                                : isTop20
+                                    ? 'bg-sky-500/15 text-sky-300 border border-sky-400/35'
+                                    : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+                            }">${item.label}</span>
+                  <div class="flex flex-col">
+                    <span class="text-[11px] font-mono ${isTop20 ? 'text-cyan-300' : 'text-slate-500'}">#${idx + 1}</span>
+                    ${idx < 10 ? '<span class="text-[9px] text-cyan-400">核心梯队</span>' : isTop20 ? '<span class="text-[9px] text-sky-400">Top 20</span>' : ''}
+                  </div>
+                </div>
+              </td>
+              <td class="py-2 px-4 text-right">
+                <div class="inline-flex flex-col items-end w-36">
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-[10px] font-mono ${isPositive ? 'text-emerald-400' : 'text-slate-500'}">
+                      ${isPositive ? '+' : ''}${diffPct}%
+                    </span>
+                    <span class="font-mono text-xs sm:text-sm font-semibold ${idx < 10 ? 'text-cyan-300' : 'text-slate-200'}">${pct}</span>
+                  </div>
+                  <div class="w-full h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300" style="width:${barPct}%"></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `;
+                    }).join('');
+
+                    dom.rankingTableBody.innerHTML = rowsHtml;
+
+                    const top3 = state.ranking.slice(0, 3).map(x => `${x.label}(${(x.prob * 100).toFixed(2)}%)`).join('、');
+                    const bottom3 = state.ranking.slice(-3).map(x => `${x.label}(${(x.prob * 100).toFixed(2)}%)`).join('、');
+                    const spreadRatio = state.ranking[79].prob > 0
+                        ? (state.ranking[0].prob / state.ranking[79].prob).toFixed(2)
+                        : '-';
+
+                    dom.insightRanking.innerHTML =
+                        `<b class="text-cyan-300">视图直白解读：</b>排行前 3 为 <b class="text-cyan-300">${top3}</b>，末尾 3 位为 ${bottom3}，首尾概率比约 <b class="text-cyan-300">${spreadRatio} 倍</b>。青色分割线以上为模型筛选的 Top 20 高概率候选区，右侧百分比旁标注了相对均值（1.250%）的偏离幅度。`;
+                }
+
+                // 事件绑定
+                dom.btnLoad.addEventListener('click', loadDataset);
+                dom.btnBuild.addEventListener('click', buildMatrices);
+                dom.btnRender.addEventListener('click', renderAllVisuals);
+
+                dom.graphEdgeLimit.addEventListener('change', () => {
+                    if (state.matrixBuilt) renderDirectedGraph();
+                });
+                dom.intervalNumberSelect.addEventListener('change', () => {
+                    if (state.matrixBuilt) renderIntervalBarChart();
+                });
+
+                window.addEventListener('DOMContentLoaded', () => {
+                    if (typeof data !== 'undefined' && Array.isArray(data) && data.length > 0) {
+                        setStatus('ok', `检测到 hp.js（共 ${data.length} 期），点击「加载数据集」载入`);
+                    }
+                });
+            })();
+    </script>
+</body>
+
+</html>
