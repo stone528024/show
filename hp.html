@@ -147,6 +147,10 @@
                         class="btn-secondary text-cyan-200 text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
                         加载数据集
                     </button>
+                    <button id="btnPaste"
+                        class="btn-secondary text-cyan-200 text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
+                        粘贴数据
+                    </button>
                     <button id="btnBuild" disabled
                         class="btn-secondary text-cyan-200 text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
                         构建转移矩阵
@@ -326,6 +330,53 @@
             </section>
         </div>
 
+        <!-- 粘贴数据弹窗 -->
+        <div id="pasteModal"
+            class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div
+                class="tech-card rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col p-4 sm:p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded bg-cyan-400"></span>
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-100">粘贴历史数据</h2>
+                    </div>
+                    <button id="btnPasteClose"
+                        class="text-slate-400 hover:text-cyan-300 text-xl leading-none px-2 cursor-pointer">&times;</button>
+                </div>
+
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    支持以下三种格式，多期之间用换行分隔（自动按 <span class="text-cyan-300">code</span> 升序排列）：
+                </p>
+                <ul class="text-[11px] text-slate-500 leading-relaxed list-disc pl-5 space-y-0.5">
+                    <li>JSON 数组：<code class="text-cyan-300/80">[{"code":"2024001","red":"01,05,33"}]</code></li>
+                    <li>整段 JS 变量：<code class="text-cyan-300/80">var data = [ ... ];</code></li>
+                    <li>纯文本行：<code class="text-cyan-300/80">2024001,01,05,33,...</code> 或 <code
+                            class="text-cyan-300/80">2024001 01 05 33</code></li>
+                </ul>
+
+                <textarea id="pasteTextarea" spellcheck="false" placeholder="在此粘贴数据..."
+                    class="w-full flex-1 min-h-[240px] bg-slate-950/80 border border-slate-700/80 rounded-xl p-3 text-xs font-mono text-cyan-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/60 resize-none"></textarea>
+
+                <div id="pasteHint" class="text-xs text-slate-400 min-h-[1rem]"></div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div class="text-[11px] text-slate-500">
+                        解析规则：编号范围 01~80，自动去重排序；至少需要 2 期有效数据。
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btnPasteClear"
+                            class="btn-secondary text-slate-300 text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
+                            清空
+                        </button>
+                        <button id="btnPasteApply"
+                            class="btn-primary text-white text-xs sm:text-sm font-medium px-4 py-2 rounded-xl cursor-pointer">
+                            解析并载入
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 最底部免责小字 -->
         <footer class="pt-1 pb-2 text-center">
             <p class="text-[11px] text-slate-500 tracking-wide">
@@ -381,7 +432,14 @@
                     insightTransHeat: document.getElementById('insightTransHeat'),
                     insightCoHeat: document.getElementById('insightCoHeat'),
                     insightInterval: document.getElementById('insightInterval'),
-                    insightRanking: document.getElementById('insightRanking')
+                    insightRanking: document.getElementById('insightRanking'),
+                    btnPaste: document.getElementById('btnPaste'),
+                    pasteModal: document.getElementById('pasteModal'),
+                    btnPasteClose: document.getElementById('btnPasteClose'),
+                    btnPasteClear: document.getElementById('btnPasteClear'),
+                    btnPasteApply: document.getElementById('btnPasteApply'),
+                    pasteTextarea: document.getElementById('pasteTextarea'),
+                    pasteHint: document.getElementById('pasteHint')
                 };
 
                 const pad2 = (n) => String(n).padStart(2, '0');
@@ -433,6 +491,11 @@
                         return false;
                     }
 
+                    return applySourceData(sourceData, 'hp.js');
+                }
+
+                // 将任意来源（hp.js / 粘贴文本）的数据统一解析并载入
+                function applySourceData(sourceData, sourceLabel) {
                     const parsed = [];
                     for (const item of sourceData) {
                         if (!item || item.code == null || !item.red) continue;
@@ -449,7 +512,7 @@
                     }
 
                     if (parsed.length < 2) {
-                        setStatus('error', '有效时序期数不足 2 期，无法建立转移模型');
+                        setStatus('error', `有效时序期数不足 2 期（来源：${sourceLabel}），无法建立转移模型`);
                         return false;
                     }
 
@@ -469,7 +532,7 @@
                     }
                     dom.periodCount.max = parsed.length;
 
-                    setStatus('ok', `已加载 ${parsed.length} 期时序数据（${parsed[0].code} ~ ${parsed[parsed.length - 1].code}）`);
+                    setStatus('ok', `已从${sourceLabel}加载 ${parsed.length} 期时序数据（${parsed[0].code} ~ ${parsed[parsed.length - 1].code}）`);
                     dom.btnBuild.disabled = false;
                     dom.btnRender.disabled = true;
                     dom.matrixSummary.textContent = '';
@@ -1113,6 +1176,129 @@
                         `<b class="text-cyan-300">视图直白解读：</b>排行前 3 为 <b class="text-cyan-300">${top3}</b>，末尾 3 位为 ${bottom3}，首尾概率比约 <b class="text-cyan-300">${spreadRatio} 倍</b>。青色分割线以上为模型筛选的 Top 20 高概率候选区，右侧百分比旁标注了相对均值（1.250%）的偏离幅度。`;
                 }
 
+                // 1.1 粘贴数据：多格式解析
+                function openPasteModal() {
+                    dom.pasteModal.classList.remove('hidden');
+                    dom.pasteHint.textContent = '';
+                    dom.pasteHint.className = 'text-xs text-slate-400 min-h-[1rem]';
+                    setTimeout(() => dom.pasteTextarea.focus(), 0);
+                }
+
+                function closePasteModal() {
+                    dom.pasteModal.classList.add('hidden');
+                }
+
+                function tryParseArrayLiteral(text) {
+                    // 先尝试严格 JSON
+                    try {
+                        const v = JSON.parse(text);
+                        if (Array.isArray(v)) return v;
+                    } catch (e) { /* 继续尝试宽松解析 */ }
+                    // 再尝试 JS 对象字面量（单引号 / 未加引号的 key）
+                    try {
+                        const v = new Function('return (' + text + ');')();
+                        if (Array.isArray(v)) return v;
+                        if (v && Array.isArray(v.list)) return v.list;
+                    } catch (e) { /* 解析失败 */ }
+                    return null;
+                }
+
+                function normalizeEntry(item) {
+                    if (!item) return null;
+                    if (typeof item === 'string') {
+                        const tokens = item.split(/[\s,;，、|]+/).filter(Boolean);
+                        if (tokens.length < 2) return null;
+                        return { code: tokens[0], red: tokens.slice(1).join(',') };
+                    }
+                    if (typeof item !== 'object') return null;
+
+                    const codeRaw = item.code != null ? item.code
+                        : (item.issue != null ? item.issue
+                            : (item.period != null ? item.period : (item.qi != null ? item.qi : null)));
+                    let redRaw = item.red != null ? item.red
+                        : (item.nums != null ? item.nums
+                            : (item.numbers != null ? item.numbers
+                                : (item.balls != null ? item.balls : null)));
+
+                    if (codeRaw == null || redRaw == null) return null;
+                    if (Array.isArray(redRaw)) redRaw = redRaw.join(',');
+                    return { code: codeRaw, red: redRaw };
+                }
+
+                function parsePasteText(raw) {
+                    const text = String(raw || '').trim();
+                    if (!text) return { entries: [], error: '内容为空' };
+
+                    let sourceArray = null;
+
+                    const firstBracket = text.indexOf('[');
+                    const lastBracket = text.lastIndexOf(']');
+                    if (firstBracket !== -1 && lastBracket > firstBracket) {
+                        sourceArray = tryParseArrayLiteral(text.slice(firstBracket, lastBracket + 1));
+                    }
+                    if (!sourceArray && text.includes('code') && text.includes('red')) {
+                        // 可能粘贴的是没有外层中括号的对象列表
+                        const inner = text.replace(/^\s*(?:var|let|const)\s+\w+\s*=\s*/, '').replace(/;\s*$/, '');
+                        sourceArray = tryParseArrayLiteral('[' + inner.replace(/^\[|\]$/g, '') + ']');
+                    }
+
+                    if (sourceArray) {
+                        const entries = sourceArray.map(normalizeEntry).filter(Boolean);
+                        if (!entries.length) return { entries: [], error: '数组中没有识别到 code / red 字段' };
+                        return { entries };
+                    }
+
+                    // 纯文本逐行解析
+                    const entries = [];
+                    let badLines = 0;
+                    String(raw).split(/\r?\n/).forEach((line) => {
+                        const s = line.trim();
+                        if (!s) return;
+                        const tokens = s.split(/[\s,;，、|]+/).filter(Boolean);
+                        if (tokens.length < 2) { badLines++; return; }
+                        const code = tokens[0];
+                        const nums = tokens.slice(1).filter((t) => /^\d+$/.test(t));
+                        if (!nums.length) { badLines++; return; }
+                        entries.push({ code, red: nums.join(',') });
+                    });
+
+                    if (!entries.length) {
+                        return { entries: [], error: '未能识别任何有效行，请检查格式（每行：期号 + 编号）' };
+                    }
+                    return { entries, badLines };
+                }
+
+                function applyPastedData() {
+                    const result = parsePasteText(dom.pasteTextarea.value);
+                    if (!result.entries.length) {
+                        dom.pasteHint.textContent = '解析失败：' + (result.error || '无有效数据');
+                        dom.pasteHint.className = 'text-xs text-rose-400 min-h-[1rem]';
+                        return;
+                    }
+
+                    // 先做一次预检，给出提示
+                    const valid = result.entries.filter((e) => {
+                        const nums = String(e.red).split(',').map((s) => parseInt(s.trim(), 10))
+                            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 80);
+                        return nums.length > 0;
+                    });
+
+                    if (valid.length < 2) {
+                        dom.pasteHint.textContent = `解析到 ${result.entries.length} 行，但有效数据仅 ${valid.length} 期，至少需要 2 期`;
+                        dom.pasteHint.className = 'text-xs text-rose-400 min-h-[1rem]';
+                        return;
+                    }
+
+                    const ok = applySourceData(valid, '粘贴数据');
+                    if (ok) {
+                        closePasteModal();
+                        setStatus('ok', `已从粘贴数据加载 ${state.rawDataset.length} 期（${state.rawDataset[0].code} ~ ${state.rawDataset[state.rawDataset.length - 1].code}），请继续构建转移矩阵`);
+                    } else {
+                        dom.pasteHint.textContent = '载入失败，请检查数据格式';
+                        dom.pasteHint.className = 'text-xs text-rose-400 min-h-[1rem]';
+                    }
+                }
+
                 // 事件绑定
                 dom.btnLoad.addEventListener('click', loadDataset);
                 dom.btnBuild.addEventListener('click', buildMatrices);
@@ -1123,6 +1309,20 @@
                 });
                 dom.intervalNumberSelect.addEventListener('change', () => {
                     if (state.matrixBuilt) renderIntervalBarChart();
+                });
+
+                dom.btnPaste.addEventListener('click', openPasteModal);
+                dom.btnPasteClose.addEventListener('click', closePasteModal);
+                dom.btnPasteClear.addEventListener('click', () => {
+                    dom.pasteTextarea.value = '';
+                    dom.pasteHint.textContent = '';
+                });
+                dom.btnPasteApply.addEventListener('click', applyPastedData);
+                dom.pasteModal.addEventListener('click', (e) => {
+                    if (e.target === dom.pasteModal) closePasteModal();
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !dom.pasteModal.classList.contains('hidden')) closePasteModal();
                 });
 
                 window.addEventListener('DOMContentLoaded', () => {
